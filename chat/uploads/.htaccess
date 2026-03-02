@@ -1,0 +1,14 @@
+Options -Indexes -ExecCGI
+
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, OPTIONS"
+</IfModule>
+
+# Deny PHP execution in uploads directory
+<FilesMatch "\.(php|php3|php4|php5|php7|phtml|phar)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+AddType text/plain .php .php3 .php4 .php5 .php7 .phtml .phar

@@ -1,0 +1,56 @@
+Options -Indexes
+
+# ── Security Headers ─────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set ngrok-skip-browser-warning "true"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# ── Protect sensitive files ───────────────────────────────────
+<FilesMatch "^(config\.php|composer\.(json|lock)|\.env)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# ── Rewrite rules ─────────────────────────────────────────────
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Allow direct access to existing files and dirs
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Route /api/* to appropriate PHP files (already direct paths)
+    # Route /widget/* to widget files
+    # Route /dashboard/* to dashboard/index.html for SPA
+    RewriteRule ^dashboard/$ dashboard/index.html [L]
+    RewriteRule ^dashboard$ dashboard/index.html [L]
+</IfModule>
+
+# ── Deny PHP execution in uploads ────────────────────────────
+<IfModule mod_php7.c>
+    <FilesMatch "\.php$">
+        php_flag engine off
+    </FilesMatch>
+</IfModule>
+
+# ── Gzip compression ─────────────────────────────────────────
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json
+</IfModule>
+
+# ── Cache static assets ──────────────────────────────────────
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/gif "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+</IfModule>

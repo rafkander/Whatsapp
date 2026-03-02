@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RCG Live Chat — Agent Dashboard</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="icon" type="image/png" href="logo.png">
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+</head>
+<body>
+<div id="app">
+
+    <!-- ════════ TOASTS ════════ -->
+    <div class="toast-stack">
+        <div v-for="t in toasts" :key="t.id" class="toast" :class="t.type">
+            <div class="toast-dot"></div>
+            {{ t.msg }}
+        </div>
+    </div>
+
+    <!-- ════════ LOGIN ════════ -->
+    <div class="login-screen" v-if="!auth.token">
+        <div class="login-card">
+            <div class="login-brand">
+                <div class="login-logo-mark">
+                    <img src="logo.png" alt="RCG" style="width:52px;height:52px;object-fit:contain;border-radius:10px;">
+                </div>
+                <h1>RCG Live Chat</h1>
+                <p>Rose Communication Group</p>
+            </div>
+            <form @submit.prevent="login">
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input class="form-input" type="email" v-model="loginForm.email"
+                           placeholder="agent@rosecomms.co.uk" required autofocus autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input class="form-input" type="password" v-model="loginForm.password"
+                           placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                <button class="btn-login" type="submit" :disabled="loginLoading">
+                    {{ loginLoading ? 'Signing in…' : 'Sign In →' }}
+                </button>
+                <div class="login-error" v-if="loginError">⚠ {{ loginError }}</div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ════════ APP ════════ -->
+    <div class="app-layout" v-else>
+
+        <!-- ── Nav Sidebar ── -->
+        <nav class="nav-sidebar">
+            <!-- Brand -->
+            <div class="nav-logo">
+                <img src="logo.png" alt="RCG" style="width:32px;height:32px;object-fit:contain;border-radius:7px;background:#fff;padding:3px;flex-shrink:0">
+                <span class="nav-logo-name">RCG Chat</span>
+            </div>
+
+            <!-- Main nav -->
+            <button class="nav-btn" :class="{active: view==='conversations'}"
+                    @click="view='conversations'">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0">
+                    <path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                </svg>
+                <span class="nav-label">Inbox</span>
+                <span class="nb-badge" v-if="unreadTotal > 0">{{ unreadTotal > 9 ? '9+' : unreadTotal }}</span>
+            </button>
+
+            <button class="nav-btn" :class="{active: view==='canned'}"
+                    @click="switchView('canned')" v-if="canAccess('agent')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0">
+                    <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
+                </svg>
+                <span class="nav-label">Canned Responses</span>
+            </button>
+
+            <div class="nav-section-label" v-if="canAccess('admin')">Administration</div>
+
+            <button class="nav-btn" :class="{active: view==='agents'}"
+                    @click="switchView('agents')" v-if="canAccess('admin')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0">
+                    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                </svg>
+                <span class="nav-label">Agents</span>
+            </button>
+
+            <button class="nav-btn" :class="{active: view==='departments'}"
+                    @click="switchView('departments')" v-if="canAccess('admin')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0">
+                    <path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/>
+                </svg>
+                <span class="nav-label">Departments</span>
+            </button>
+
+            <button class="nav-btn" :class="{active: view==='analytics'}"
+                    @click="switchView('analytics')" v-if="canAccess('supervisor')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                </svg>
+                <span class="nav-label">Analytics</span>
+            </button>
+
+            <button class="nav-btn" :class="{active: view==='settings'}"
+                    @click="switchView('settings')" v-if="canAccess('admin')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0">
+                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                </svg>
+                <span class="nav-label">Settings</span>
+            </button>
+
+            <div class="nav-spacer"></div>
+
+            <!-- Agent status -->
+            <div class="nav-agent">
+                <div class="nav-agent-avatar" :class="`ring-${auth.agent.status||'offline'}`"
+                     @click="statusMenuOpen = !statusMenuOpen" style="cursor:pointer;flex-shrink:0">
+                    {{ initials(auth.agent.name) }}
+                    <span class="nav-status-dot" :class="auth.agent.status||'offline'"></span>
+                </div>
+                <span class="nav-agent-name">{{ auth.agent.name }}</span>
+
+                <transition name="pop">
+                <div class="status-dropdown" v-if="statusMenuOpen">
+                    <div class="status-dropdown-header">
+                        <div class="status-dropdown-name">{{ auth.agent.name }}</div>
+                        <div class="status-dropdown-email">
+                            <span :class="`rank-badge rank-${auth.agent.role}`" style="font-size:.6rem;padding:2px 7px">
+                                {{ rankLabel(auth.agent.role) }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="status-item" @click="setStatus('online'); statusMenuOpen=false">
+                        <span class="sdot online"></span> Online
+                    </div>
+                    <div class="status-item" @click="setStatus('away'); statusMenuOpen=false">
+                        <span class="sdot away"></span> Away
+                    </div>
+                    <div class="status-item" @click="setStatus('offline'); statusMenuOpen=false">
+                        <span class="sdot offline"></span> Offline
+                    </div>
+                    <div class="status-item divider" @click="logout">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                        Sign Out
+                    </div>
+                </div>
+                </transition>
+            </div>
+        </nav>
+
+        <!-- ════════ CONVERSATIONS VIEW ════════ -->
+        <template v-if="view==='conversations'">
+
+            <!-- List Panel -->
+            <div class="conv-list-panel">
+                <div class="conv-list-header">
+                    <div class="conv-list-title">
+                        <span class="conv-list-title-text">Inbox</span>
+                        <span class="status-badge status-open" v-if="unreadTotal > 0" style="font-size:.68rem">
+                            {{ unreadTotal }} unread
+                        </span>
+                    </div>
+                    <div class="search-wrap">
+                        <span class="search-icon">🔍</span>
+                        <input class="search-input" type="text" placeholder="Search conversations…"
+                               v-model="convSearch" @input="debouncedLoad">
+                    </div>
+                    <button class="btn-wa-new" @click="waNewModal=true" v-if="settings.wa_enabled==='1'" title="Start WhatsApp Conversation">📱 New</button>
+                </div>
+
+                <div class="filter-scroll">
+                    <button class="filter-tab" :class="{active:convFilter===''}"        @click="setFilter('')">All</button>
+                    <button class="filter-tab" :class="{active:convFilter==='open'}"    @click="setFilter('open')">Open</button>
+                    <button class="filter-tab" :class="{active:convFilter==='closed'}"  @click="setFilter('closed')">Closed</button>
+                    <button class="filter-tab" :class="{active:convFilter==='mine'}"    @click="setFilter('mine')">Mine</button>
+                    <button class="filter-tab" :class="{active:convFilter==='unread'}"  @click="setFilter('unread')">Unread</button>
+                    <button class="filter-tab" :class="{active:convFilter==='widget'}"  @click="setFilter('widget')">🌐 Web</button>
+                    <button class="filter-tab" :class="{active:convFilter==='wa'}"      @click="setFilter('wa')">📱 WhatsApp</button>
+                </div>
+
+                <div class="conv-list">
+                    <div class="conv-empty" v-if="!conversations.length">
+                        <div class="conv-empty-icon">💬</div>
+                        <div class="conv-empty-text">No conversations found</div>
+                    </div>
+                    <div v-for="c in conversations" :key="c.id"
+                         class="conv-item"
+                         :class="{active: activeConvId===c.id, unread: c.unread_agent>0}"
+                         @click="openConversation(c)">
+                        <div class="conv-item-row1">
+                            <div class="conv-avatar"
+                                 :class="c.channel==='whatsapp' ? 'conv-avatar-wa' : ''"
+                                 :style="{background: avatarColor(c.contact_name||c.contact_email||'V')}">
+                                {{ initials(c.contact_name || c.contact_email || 'V') }}
+                            </div>
+                            <div class="conv-meta">
+                                <div class="conv-name-row">
+                                    <span class="conv-name">{{ c.contact_name || c.contact_email || 'Visitor' }}</span>
+                                    <span class="conv-time">{{ timeAgo(c.last_message_at || c.updated_at) }}</span>
+                                </div>
+                                <div class="conv-preview-row">
+                                    <span class="conv-preview">{{ c.last_message || 'No messages yet' }}</span>
+                                    <span class="unread-badge" v-if="c.unread_agent>0">{{ c.unread_agent }}</span>
+                                </div>
+                                <div style="margin-top:4px" v-if="c.dept_name">
+                                    <span class="dept-pill" :style="{background:(c.dept_color||'#2563eb')+'18',color:c.dept_color||'#2563eb'}">
+                                        {{ c.dept_name }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Panel -->
+            <div class="chat-panel">
+                <!-- Empty -->
+                <div class="chat-empty" v-if="!activeConvId">
+                    <div class="chat-empty-icon">
+                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                            <path d="M18 28 Q18 20 24 20" stroke="#C0392B" stroke-width="2.5" stroke-linecap="round"/>
+                            <path d="M18 28 Q18 15 27 15" stroke="#C0392B" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>
+                            <path d="M18 28 Q18 10 30 10" stroke="#C0392B" stroke-width="2.5" stroke-linecap="round" opacity=".4"/>
+                            <circle cx="18" cy="28" r="2.4" fill="#C0392B"/>
+                        </svg>
+                    </div>
+                    <h3>Select a conversation</h3>
+                    <p>Choose a conversation from the list to start chatting</p>
+                </div>
+
+                <template v-else>
+                    <div class="chat-inner">
+                        <!-- Header -->
+                        <div class="chat-header">
+                            <div class="chat-contact-ava"
+                                 :style="{background: avatarColor(activeConv?.contact_name||activeConv?.contact_email||'V')}">
+                                {{ initials(activeConv?.contact_name||activeConv?.contact_email||'V') }}
+                            </div>
+                            <div class="chat-contact-info">
+                                <div class="chat-contact-name">
+                                    {{ activeConv?.contact_name || activeConv?.contact_email || 'Visitor' }}
+                                    <span class="wa-badge" v-if="activeConv?.channel==='whatsapp'">
+                                        📱 WhatsApp
+                                    </span>
+                                    <span :class="`status-badge status-${activeConv?.status}`" style="font-size:.68rem;padding:3px 8px">
+                                        {{ activeConv?.status }}
+                                    </span>
+                                </div>
+                                <div class="chat-contact-sub">
+                                    <template v-if="activeConv?.dept_name">
+                                        <span :style="{color:activeConv.dept_color}">●</span>
+                                        {{ activeConv.dept_name }}
+                                    </template>
+                                    <template v-if="activeConv?.agent_name"> · 👤 {{ activeConv.agent_name }}</template>
+                                    <template v-if="activeConv?.page_url"> · 🔗 {{ truncate(activeConv.page_url, 45) }}</template>
+                                </div>
+                            </div>
+                            <div class="chat-header-actions">
+                                <!-- Take button: shown when open and not yet assigned to current agent -->
+                                <button class="hdr-btn take-btn" @click="takeConversation"
+                                        v-if="activeConv?.status!=='closed' && !canReply">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+                                    Take
+                                </button>
+                                <button class="hdr-btn" @click="showAssignModal=true" v-if="activeConv?.status!=='closed' && canAccess('supervisor')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                                    Assign
+                                </button>
+                                <button class="hdr-btn success" @click="reopenConv" v-if="activeConv?.status==='closed'">
+                                    ↺ Reopen
+                                </button>
+                                <button class="hdr-btn danger" @click="closeConv" v-if="activeConv?.status!=='closed' && canReply">
+                                    ✓ Close
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Messages -->
+                        <div class="messages-pane" ref="msgContainer">
+                            <template v-for="(msg, i) in activeMessages" :key="msg.id">
+                                <div class="date-sep" v-if="showDateSep(msg, activeMessages[i-1])">
+                                    {{ formatDate(msg.created_at) }}
+                                </div>
+                                <div class="msg-row" :class="[msg.sender_type, i===0||activeMessages[i-1]?.sender_type!==msg.sender_type?'group-start':'']">
+                                    <div class="msg-from"
+                                         v-if="(msg.sender_type==='agent'||msg.sender_type==='bot') && (i===0||activeMessages[i-1]?.sender_type!==msg.sender_type)">
+                                        {{ msg.sender_name || 'Agent' }}
+                                        <template v-if="msg.type==='note'"> · <span style="color:#d97706">Internal Note</span></template>
+                                    </div>
+                                    <div class="msg-bubble">
+                                        <img class="msg-img" v-if="msg.type==='image'&&msg.file_url" :src="msg.file_url" :alt="msg.file_name||'Image'" loading="lazy">
+                                        <a class="msg-file" v-else-if="msg.type==='file'&&msg.file_url" :href="msg.file_url" target="_blank" rel="noopener">
+                                            <span class="msg-file-icon">📎</span>{{ msg.file_name||'Download file' }}
+                                        </a>
+                                        <span v-else v-html="nl2br(msg.content)"></span>
+                                    </div>
+                                    <div class="msg-foot">
+                                        <span class="msg-time-txt">{{ formatTime(msg.created_at) }}</span>
+                                        <span class="msg-read" v-if="msg.sender_type==='agent'&&msg.read_at" title="Read">✓✓</span>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Visitor typing -->
+                            <div class="msg-row visitor" v-if="visitorTyping">
+                                <div class="typing-bubble">
+                                    <span class="t-dot"></span>
+                                    <span class="t-dot"></span>
+                                    <span class="t-dot"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Take-to-reply banner (shown when open but not assigned to current agent) -->
+                        <div class="take-banner" v-if="activeConv?.status!=='closed' && !canReply">
+                            <span v-if="activeConv?.agent_name">
+                                🔒 This conversation is handled by <strong>{{ activeConv.agent_name }}</strong>
+                            </span>
+                            <span v-else>
+                                🔒 No one has taken this conversation yet
+                            </span>
+                            <button class="btn btn-primary btn-sm" @click="takeConversation" style="margin-left:12px">
+                                Take Conversation
+                            </button>
+                        </div>
+
+                        <!-- Input -->
+                        <div class="input-area" v-if="activeConv?.status!=='closed' && canReply">
+                            <div class="canned-pop" v-if="cannedSuggestions.length">
+                                <div class="canned-pop-item" v-for="c in cannedSuggestions" :key="c.id" @click="applyCanned(c)">
+                                    <div class="canned-sc">/{{ c.shortcut }}</div>
+                                    <div class="canned-ttl">{{ c.title }}</div>
+                                    <div class="canned-prv">{{ c.content }}</div>
+                                </div>
+                            </div>
+                            <div class="input-toolbar">
+                                <button class="tb-btn" :class="{on:inputMode==='note'}" @click="toggleNote">
+                                    📝 {{ inputMode==='note' ? 'Note mode ON' : 'Add note' }}
+                                </button>
+                                <button class="tb-btn" @click="triggerFileUpload">📎 Attach</button>
+                                <input type="file" ref="fileInput" style="display:none"
+                                       @change="uploadFile"
+                                       accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip">
+                                <span style="flex:1"></span>
+                                <span style="font-size:.72rem;color:var(--text-light)" v-if="inputMode==='note'">
+                                    🔒 Not visible to visitor
+                                </span>
+                            </div>
+                            <div class="input-row">
+                                <textarea class="agent-input" ref="agentInput"
+                                    :class="{'note-mode':inputMode==='note'}"
+                                    v-model="inputText"
+                                    :placeholder="inputMode==='note' ? 'Internal note — only agents can see this…' : 'Type a message…  / for canned responses'"
+                                    @keydown.enter.exact.prevent="sendAgentMessage"
+                                    @keydown="onAgentTyping"
+                                    @input="onAgentInput"
+                                    rows="1">
+                                </textarea>
+                                <button class="send-btn" @click="sendAgentMessage" :disabled="!inputText.trim()">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="white">
+                                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="closed-notice" v-else>
+                            <span>Conversation closed
+                                <template v-if="activeConv?.rating"> · Rated {{ '⭐'.repeat(activeConv.rating) }}</template>
+                            </span>
+                            <button class="btn btn-ghost btn-sm" @click="reopenConv">↺ Reopen</button>
+                        </div>
+                    </div>
+
+                    <!-- Info Sidebar -->
+                    <div class="info-sidebar">
+                        <div class="info-contact-card">
+                            <div class="info-ava"
+                                 :style="{background: avatarColor(activeConv?.contact_name||activeConv?.contact_email||'V')}">
+                                {{ initials(activeConv?.contact_name||activeConv?.contact_email||'V') }}
+                            </div>
+                            <div class="info-name">{{ activeConv?.contact_name || 'Anonymous Visitor' }}</div>
+                            <div class="info-email">{{ activeConv?.contact_email || '' }}</div>
+                        </div>
+
+                        <!-- Details -->
+                        <div class="info-section">
+                            <div class="info-section-hd">Contact Details</div>
+                            <div class="info-kv" v-if="activeConv?.whatsapp_number">
+                                <div class="info-k">WhatsApp</div>
+                                <div class="info-v">📱 {{ activeConv.whatsapp_number }}</div>
+                            </div>
+                            <div class="info-kv"><div class="info-k">Browser</div><div class="info-v">{{ activeConv?.browser||'—' }}</div></div>
+                            <div class="info-kv"><div class="info-k">OS</div><div class="info-v">{{ activeConv?.os||'—' }}</div></div>
+                            <div class="info-kv"><div class="info-k">IP Address</div><div class="info-v">{{ activeConv?.ip||'—' }}</div></div>
+                            <div class="info-kv" v-if="activeConv?.page_url">
+                                <div class="info-k">Page</div>
+                                <div class="info-v"><a :href="activeConv.page_url" target="_blank">{{ truncate(activeConv.page_url,38) }}</a></div>
+                            </div>
+                            <div class="info-kv">
+                                <div class="info-k">Started</div>
+                                <div class="info-v">{{ formatDate(activeConv?.created_at) }} {{ formatTime(activeConv?.created_at) }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Assignment -->
+                        <div class="info-section">
+                            <div class="info-section-hd">Assignment</div>
+                            <div class="info-kv">
+                                <div class="info-k">Assigned Agent</div>
+                                <select class="info-select" @change="assignAgent($event.target.value)">
+                                    <option value="">— Unassigned —</option>
+                                    <option v-for="a in agents" :key="a.id" :value="a.id"
+                                            :selected="activeConv?.agent_id==a.id">
+                                        {{ a.name }} ({{ a.status }})
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="info-kv">
+                                <div class="info-k">Department</div>
+                                <select class="info-select" @change="assignDept($event.target.value)">
+                                    <option value="">— No Department —</option>
+                                    <option v-for="d in departments" :key="d.id" :value="d.id"
+                                            :selected="activeConv?.dept_id==d.id">{{ d.name }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Tags -->
+                        <div class="info-section">
+                            <div class="info-section-hd">Tags</div>
+                            <div class="tags-wrap">
+                                <span v-for="tag in convTags" :key="tag" class="tag-chip">
+                                    {{ tag }}
+                                    <span class="tag-rm" @click="removeTag(tag)">✕</span>
+                                </span>
+                                <input class="tag-add-input" placeholder="+ tag"
+                                       v-model="newTag"
+                                       @keydown.enter="addTag"
+                                       @keydown.188.prevent="addTag">
+                            </div>
+                        </div>
+
+                        <!-- History -->
+                        <div class="info-section" v-if="contactHistory.length>0">
+                            <div class="info-section-hd">History ({{ contactHistory.length }})</div>
+                            <div v-for="h in contactHistory" :key="h.id"
+                                 class="hist-item" @click="openConversationById(h.id)">
+                                <div class="hist-date">{{ formatDate(h.created_at) }}</div>
+                                <div class="hist-prev">{{ h.last_message||'No messages' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <!-- ════════ CANNED RESPONSES ════════ -->
+        <template v-if="view==='canned'">
+            <div class="admin-wrap">
+                <div class="page-header">
+                    <div>
+                        <div class="page-title">Canned Responses</div>
+                        <div class="page-sub">Quick replies — type / in chat to search</div>
+                    </div>
+                    <button class="btn btn-primary" @click="showCannedModal=true; editingCanned=null; cannedForm={}">+ New Response</button>
+                </div>
+                <div class="card">
+                    <div class="card-hd">All Responses ({{ cannedList.length }})</div>
+                    <table class="data-table">
+                        <thead><tr>
+                            <th>Shortcut</th><th>Title</th><th>Department</th><th>Preview</th><th>Actions</th>
+                        </tr></thead>
+                        <tbody>
+                            <tr v-for="c in cannedList" :key="c.id">
+                                <td><strong style="color:var(--rose)">/{{ c.shortcut }}</strong></td>
+                                <td>{{ c.title }}</td>
+                                <td><span v-if="c.dept_name" class="dept-pill" style="font-size:.72rem;padding:3px 8px;background:var(--rose-muted);color:var(--rose)">{{ c.dept_name }}</span><span v-else style="color:var(--text-light);font-size:.78rem">All depts</span></td>
+                                <td style="max-width:220px;color:var(--text-muted);font-size:.8rem">{{ truncate(c.content,60) }}</td>
+                                <td style="white-space:nowrap">
+                                    <button class="btn btn-ghost btn-sm" @click="editCanned(c)" style="margin-right:5px">Edit</button>
+                                    <button class="btn btn-danger-ghost btn-sm" @click="deleteCanned(c.id)">Delete</button>
+                                </td>
+                            </tr>
+                            <tr v-if="!cannedList.length"><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted)">No canned responses yet</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
+
+        <!-- ════════ AGENTS ════════ -->
+        <template v-if="view==='agents'">
+            <div class="admin-wrap">
+                <div class="page-header">
+                    <div>
+                        <div class="page-title">Agents</div>
+                        <div class="page-sub">Manage your team members and their roles</div>
+                    </div>
+                    <button class="btn btn-primary" @click="showAgentModal=true; editingAgent=null; agentForm={role:'agent'}">+ Add Agent</button>
+                </div>
+                <div class="card">
+                    <div class="card-hd">Team Members ({{ agentList.length }})</div>
+                    <table class="data-table">
+                        <thead><tr><th>Agent</th><th>Email</th><th>Rank</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            <tr v-for="a in agentList" :key="a.id">
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:10px">
+                                        <div :style="{width:'34px',height:'34px',borderRadius:'50%',background:avatarColor(a.name),display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:'.78rem',flexShrink:0}">
+                                            {{ initials(a.name) }}
+                                        </div>
+                                        <strong>{{ a.name }}</strong>
+                                        <span v-if="a.id===auth.agent.id" style="font-size:.68rem;color:var(--text-muted)">(you)</span>
+                                    </div>
+                                </td>
+                                <td style="color:var(--text-muted)">{{ a.email }}</td>
+                                <td><span :class="`rank-badge rank-${a.role}`"><span class="rank-icon">{{ rankIcon(a.role) }}</span>{{ rankLabel(a.role) }}</span></td>
+                                <td><span :class="`status-badge status-${a.status}`">{{ a.status }}</span></td>
+                                <td style="white-space:nowrap">
+                                    <button class="btn btn-ghost btn-sm" @click="editAgent(a)" style="margin-right:5px">Edit</button>
+                                    <button class="btn btn-danger-ghost btn-sm" @click="deleteAgent(a.id)" v-if="a.id!==auth.agent.id">Delete</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
+
+        <!-- ════════ DEPARTMENTS ════════ -->
+        <template v-if="view==='departments'">
+            <div class="admin-wrap">
+                <div class="page-header">
+                    <div>
+                        <div class="page-title">Departments</div>
+                        <div class="page-sub">Organise conversations by team or service</div>
+                    </div>
+                    <button class="btn btn-primary" @click="showDeptModal=true; editingDept=null; deptForm={color:'#C0392B'}">+ New Department</button>
+                </div>
+                <div class="card">
+                    <table class="data-table">
+                        <thead><tr><th>Department</th><th>Colour</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            <tr v-for="d in departments" :key="d.id">
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:8px">
+                                        <span :style="{width:'10px',height:'10px',borderRadius:'50%',background:d.color,display:'inline-block',flexShrink:0}"></span>
+                                        <strong>{{ d.name }}</strong>
+                                    </div>
+                                </td>
+                                <td><span style="font-family:monospace;font-size:.82rem;color:var(--text-muted)">{{ d.color }}</span></td>
+                                <td><span :class="d.is_active ? 'status-badge status-open' : 'status-badge status-closed'">{{ d.is_active?'Active':'Inactive' }}</span></td>
+                                <td style="white-space:nowrap">
+                                    <button class="btn btn-ghost btn-sm" @click="editDept(d)" style="margin-right:5px">Edit</button>
+                                    <button class="btn btn-danger-ghost btn-sm" @click="deleteDept(d.id)">Remove</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
+
+        <!-- ════════ ANALYTICS ════════ -->
+        <template v-if="view==='analytics'">
+            <div class="admin-wrap">
+                <div class="page-header">
+                    <div>
+                        <div class="page-title">Analytics</div>
+                        <div class="page-sub">Performance overview for your support team</div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <input type="date" class="f-input" style="width:145px" v-model="analyticsFrom" @change="loadAnalytics">
+                        <span style="color:var(--text-muted);font-size:.82rem">to</span>
+                        <input type="date" class="f-input" style="width:145px" v-model="analyticsTo" @change="loadAnalytics">
+                    </div>
+                </div>
+
+                <div class="stats-grid" v-if="analytics">
+                    <div class="stat-card"><div class="stat-icon">💬</div><div class="stat-val">{{ analytics.total_conversations }}</div><div class="stat-lbl">Total Conversations</div></div>
+                    <div class="stat-card"><div class="stat-icon">🟢</div><div class="stat-val">{{ analytics.by_status?.open||0 }}</div><div class="stat-lbl">Open</div></div>
+                    <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-val">{{ analytics.by_status?.closed||0 }}</div><div class="stat-lbl">Closed</div></div>
+                    <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-val">{{ analytics.avg_rating ? analytics.avg_rating : '—' }}</div><div class="stat-lbl">Avg Rating</div></div>
+                    <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-val">{{ fmtDuration(analytics.avg_response_seconds) }}</div><div class="stat-lbl">Avg Response</div></div>
+                    <div class="stat-card"><div class="stat-icon">📱</div><div class="stat-val">{{ analytics.by_channel?.whatsapp||0 }}</div><div class="stat-lbl">WhatsApp</div></div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" v-if="analytics">
+                    <div class="card">
+                        <div class="card-hd">By Department</div>
+                        <div style="padding:18px">
+                            <div class="bar-chart">
+                                <div v-for="d in analytics.by_department" :key="d.id" class="bar-row">
+                                    <div class="bar-lbl">{{ d.name }}</div>
+                                    <div class="bar-track">
+                                        <div class="bar-fill" :style="{width:barPct(d.total,analytics.total_conversations)+'%',background:d.color||'var(--rose)'}"></div>
+                                    </div>
+                                    <div class="bar-num">{{ d.total }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-hd">Top Agents</div>
+                        <table class="data-table">
+                            <thead><tr><th>Agent</th><th>Total</th><th>Closed</th><th>Rating</th></tr></thead>
+                            <tbody>
+                                <tr v-for="a in analytics.by_agent" :key="a.id">
+                                    <td>{{ a.name }}</td>
+                                    <td>{{ a.total }}</td>
+                                    <td>{{ a.closed }}</td>
+                                    <td>{{ a.avg_rating ? parseFloat(a.avg_rating).toFixed(1)+'★' : '—' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- ════════ SETTINGS ════════ -->
+        <template v-if="view==='settings'">
+            <div class="admin-wrap">
+                <div class="page-header">
+                    <div>
+                        <div class="page-title">Settings</div>
+                        <div class="page-sub">Configure your chat system</div>
+                    </div>
+                    <button class="btn btn-primary" @click="saveSettings">💾 Save All Changes</button>
+                </div>
+
+                <div class="card settings-section">
+                    <div class="card-hd">🎨 Widget Appearance</div>
+                    <div style="padding:20px">
+                        <div class="f-group"><label class="f-label">Brand Colour</label>
+                            <div class="f-color-row">
+                                <input type="color" class="f-color" v-model="settings.widget_color">
+                                <input class="f-input" style="width:140px;font-family:monospace" v-model="settings.widget_color">
+                            </div>
+                        </div>
+                        <div class="f-group"><label class="f-label">Widget Name</label><input class="f-input" v-model="settings.widget_name" placeholder="RCG Support"></div>
+                        <div class="f-group"><label class="f-label">Greeting Message</label><input class="f-input" v-model="settings.widget_greeting"></div>
+                        <div class="f-group">
+                            <label class="f-label">Position</label>
+                            <select class="f-select" v-model="settings.widget_position">
+                                <option value="bottom-right">Bottom Right</option>
+                                <option value="bottom-left">Bottom Left</option>
+                            </select>
+                        </div>
+                        <div class="f-group"><label class="f-label">Offline Message</label><textarea class="f-textarea" v-model="settings.offline_message"></textarea></div>
+                    </div>
+                </div>
+
+                <div class="card settings-section">
+                    <div class="card-hd">📱 WhatsApp Cloud API</div>
+                    <div style="padding:20px">
+                        <div class="f-group"><label class="f-label">Phone Number ID</label><input class="f-input" v-model="settings.wa_phone_number_id" placeholder="From Meta Developer Portal"></div>
+                        <div class="f-group"><label class="f-label">Access Token</label><input class="f-input" type="password" v-model="settings.wa_access_token"><div class="f-hint">Leave blank to keep existing token</div></div>
+                        <div class="f-group"><label class="f-label">Webhook Verify Token</label><input class="f-input" v-model="settings.wa_verify_token" placeholder="Choose any secret string"><div class="f-hint">Set this same value in Meta Developer Portal</div></div>
+                        <div class="f-group" style="background:#f0fdf4;padding:12px;border-radius:8px">
+                            <div class="f-label">Webhook URL — set this in Meta Developer Portal</div>
+                            <code style="font-size:.78rem;word-break:break-all;color:#059669">{{ apiBase }}/api/webhook/whatsapp.php</code>
+                        </div>
+                        <div class="f-group">
+                            <div class="toggle-wrap">
+                                <label class="toggle"><input type="checkbox" v-model="settings.wa_enabled" true-value="1" false-value="0"><span class="toggle-track"></span></label>
+                                <span class="toggle-lbl">Enable WhatsApp Integration</span>
+                            </div>
+                        </div>
+                        <div class="f-group">
+                            <div class="toggle-wrap">
+                                <label class="toggle"><input type="checkbox" v-model="settings.wa_bot_enabled" true-value="1" false-value="0"><span class="toggle-track"></span></label>
+                                <span class="toggle-lbl">Enable Bot (auto-route new WA conversations)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card settings-section">
+                    <div class="card-hd">🕐 Business Hours</div>
+                    <div style="padding:20px">
+                        <div class="f-group">
+                            <div class="toggle-wrap">
+                                <label class="toggle"><input type="checkbox" v-model="settings.business_hours_enabled" true-value="1" false-value="0"><span class="toggle-track"></span></label>
+                                <span class="toggle-lbl">Enable Business Hours</span>
+                            </div>
+                            <div class="f-hint">Visitors outside hours see the offline message automatically.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card settings-section">
+                    <div class="card-hd">📧 Email Notifications</div>
+                    <div style="padding:20px">
+                        <div class="f-group">
+                            <div class="toggle-wrap">
+                                <label class="toggle"><input type="checkbox" v-model="settings.email_notify_new_chat" true-value="1" false-value="0"><span class="toggle-track"></span></label>
+                                <span class="toggle-lbl">Email on new chat</span>
+                            </div>
+                        </div>
+                        <div class="f-group"><label class="f-label">Notify Addresses</label><input class="f-input" v-model="settings.email_notify_addresses" placeholder="agent1@rosecomms.co.uk, agent2@..."><div class="f-hint">Comma separated</div></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                            <div class="f-group"><label class="f-label">SMTP Host</label><input class="f-input" v-model="settings.smtp_host"></div>
+                            <div class="f-group"><label class="f-label">SMTP Port</label><input class="f-input" v-model="settings.smtp_port"></div>
+                            <div class="f-group"><label class="f-label">SMTP Username</label><input class="f-input" v-model="settings.smtp_user"></div>
+                            <div class="f-group"><label class="f-label">SMTP Password</label><input class="f-input" type="password" v-model="settings.smtp_pass"></div>
+                        </div>
+                        <div class="f-group"><label class="f-label">From Email</label><input class="f-input" type="email" v-model="settings.smtp_from"></div>
+                    </div>
+                </div>
+
+                <div class="card settings-section">
+                    <div class="card-hd">🔗 Install on Your Website</div>
+                    <div style="padding:20px">
+                        <p style="font-size:.84rem;color:var(--text-muted);margin-bottom:14px">
+                            Paste this snippet before the <code style="background:var(--surface-2);padding:1px 6px;border-radius:4px;font-size:.8rem">&lt;/body&gt;</code> tag on any page of your website.
+                        </p>
+                        <div style="position:relative">
+                            <pre class="embed-code-block" id="embedCodeBlock">{{ embedCode }}</pre>
+                            <button class="btn btn-ghost btn-sm" style="position:absolute;top:8px;right:8px" @click="copyEmbed">{{ embedCopied ? '✓ Copied!' : 'Copy' }}</button>
+                        </div>
+                        <div style="margin-top:14px;font-size:.8rem;color:var(--text-muted)">
+                            The widget colour and position follow your <strong>Widget Appearance</strong> settings above.
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" @click="saveSettings">💾 Save All Changes</button>
+            </div>
+        </template>
+
+    </div><!-- /app-layout -->
+
+    <!-- ════════ MODALS ════════ -->
+
+    <!-- Assign modal -->
+    <div class="modal-overlay" v-if="showAssignModal" @click.self="showAssignModal=false">
+        <div class="modal">
+            <div class="modal-hd">
+                <div class="modal-title">Assign Conversation</div>
+                <button class="modal-close" @click="showAssignModal=false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="f-group">
+                    <label class="f-label">Assign to Agent</label>
+                    <select class="f-select" v-model="assignForm.agent_id">
+                        <option value="">Unassigned</option>
+                        <option v-for="a in agents" :key="a.id" :value="a.id">{{ a.name }} — {{ rankLabel(a.role) }} ({{ a.status }})</option>
+                    </select>
+                </div>
+                <div class="f-group">
+                    <label class="f-label">Move to Department</label>
+                    <select class="f-select" v-model="assignForm.dept_id">
+                        <option value="">No Change</option>
+                        <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-ft">
+                <button class="btn btn-ghost" @click="showAssignModal=false">Cancel</button>
+                <button class="btn btn-primary" @click="submitAssign">Assign →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canned modal -->
+    <div class="modal-overlay" v-if="showCannedModal" @click.self="showCannedModal=false">
+        <div class="modal">
+            <div class="modal-hd">
+                <div class="modal-title">{{ editingCanned ? 'Edit' : 'New' }} Canned Response</div>
+                <button class="modal-close" @click="showCannedModal=false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="f-group"><label class="f-label">Shortcut <span style="color:var(--text-muted)">(no slash)</span></label><input class="f-input" v-model="cannedForm.shortcut" placeholder="e.g. hello"></div>
+                <div class="f-group"><label class="f-label">Title</label><input class="f-input" v-model="cannedForm.title" placeholder="e.g. Greeting"></div>
+                <div class="f-group"><label class="f-label">Content</label><textarea class="f-textarea" v-model="cannedForm.content" rows="4" placeholder="The full response text…"></textarea></div>
+                <div class="f-group">
+                    <label class="f-label">Department <span style="color:var(--text-muted)">(optional)</span></label>
+                    <select class="f-select" v-model="cannedForm.dept_id">
+                        <option value="">All departments</option>
+                        <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-ft">
+                <button class="btn btn-ghost" @click="showCannedModal=false">Cancel</button>
+                <button class="btn btn-primary" @click="saveCanned">Save Response →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent modal -->
+    <div class="modal-overlay" v-if="showAgentModal" @click.self="showAgentModal=false">
+        <div class="modal">
+            <div class="modal-hd">
+                <div class="modal-title">{{ editingAgent ? 'Edit Agent' : 'Add New Agent' }}</div>
+                <button class="modal-close" @click="showAgentModal=false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="f-group"><label class="f-label">Full Name</label><input class="f-input" v-model="agentForm.name" placeholder="Jane Smith"></div>
+                <div class="f-group"><label class="f-label">Email Address</label><input class="f-input" type="email" v-model="agentForm.email" placeholder="jane@rosecomms.co.uk"></div>
+                <div class="f-group"><label class="f-label">{{ editingAgent ? 'New Password' : 'Password' }} <span style="color:var(--text-muted)" v-if="editingAgent">(leave blank to keep)</span></label><input class="f-input" type="password" v-model="agentForm.password" :placeholder="editingAgent?'Leave blank to keep current':'Min 8 characters'"></div>
+                <div class="f-group">
+                    <label class="f-label">Rank / Role</label>
+                    <select class="f-select" v-model="agentForm.role">
+                        <option value="agent">🟢 Agent</option>
+                        <option value="senior_agent">🔵 Senior Agent</option>
+                        <option value="supervisor">🟠 Supervisor</option>
+                        <option value="admin">🔴 Admin</option>
+                        <option value="super_admin" v-if="auth.agent.role==='super_admin'">🟣 Super Admin</option>
+                    </select>
+                    <div class="f-hint">{{ roleDescription(agentForm.role) }}</div>
+                </div>
+            </div>
+            <div class="modal-ft">
+                <button class="btn btn-ghost" @click="showAgentModal=false">Cancel</button>
+                <button class="btn btn-primary" @click="saveAgent">{{ editingAgent ? 'Save Changes' : 'Create Agent' }} →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department modal -->
+    <div class="modal-overlay" v-if="showDeptModal" @click.self="showDeptModal=false">
+        <div class="modal">
+            <div class="modal-hd">
+                <div class="modal-title">{{ editingDept ? 'Edit' : 'New' }} Department</div>
+                <button class="modal-close" @click="showDeptModal=false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="f-group"><label class="f-label">Department Name</label><input class="f-input" v-model="deptForm.name" placeholder="e.g. UCC Sales"></div>
+                <div class="f-group">
+                    <label class="f-label">Colour</label>
+                    <div class="f-color-row">
+                        <input type="color" class="f-color" v-model="deptForm.color">
+                        <input class="f-input" style="width:140px;font-family:monospace" v-model="deptForm.color">
+                    </div>
+                </div>
+                <div class="f-group"><label class="f-label">Description <span style="color:var(--text-muted)">(optional)</span></label><input class="f-input" v-model="deptForm.description"></div>
+            </div>
+            <div class="modal-ft">
+                <button class="btn btn-ghost" @click="showDeptModal=false">Cancel</button>
+                <button class="btn btn-primary" @click="saveDept">Save Department →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New WhatsApp conversation modal -->
+    <div class="modal-overlay" v-if="waNewModal" @click.self="waNewModal=false">
+        <div class="modal">
+            <div class="modal-hd">
+                <div class="modal-title">📱 New WhatsApp Conversation</div>
+                <button class="modal-close" @click="waNewModal=false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="f-group">
+                    <label class="f-label">Phone Number <span style="color:var(--text-muted)">(international format, e.g. 447911123456)</span></label>
+                    <input class="f-input" v-model="waNewPhone" placeholder="447911123456" type="tel">
+                </div>
+                <div class="f-group">
+                    <label class="f-label">First Message</label>
+                    <textarea class="f-textarea" v-model="waNewMsg" rows="3" placeholder="Hi, I'm reaching out regarding…"></textarea>
+                </div>
+            </div>
+            <div class="modal-ft">
+                <button class="btn btn-ghost" @click="waNewModal=false">Cancel</button>
+                <button class="btn btn-primary" @click="startWaConv">Send &amp; Open →</button>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /#app -->
+<script src="js/app.js"></script>
+</body>
+</html>

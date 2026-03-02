@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Widget Brand Test</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; padding: 40px; }
+h1 { font-size: 1.4rem; color: #1e293b; }
+.brand-switcher { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.brand-btn { padding: 10px 22px; border: 2px solid #e2e8f0; border-radius: 8px; background: #fff; font-size: .9rem; font-weight: 600; cursor: pointer; transition: all .15s; color: #475569; }
+.brand-btn:hover { border-color: #94a3b8; color: #1e293b; }
+.brand-btn.rcuk { border-color: #1e1080; color: #1e1080; }
+.brand-btn.alfonica { border-color: #6d4aae; color: #6d4aae; }
+.brand-btn.default { border-color: #C0392B; color: #C0392B; }
+.note { font-size: .82rem; color: #64748b; text-align: center; max-width: 480px; line-height: 1.6; }
+code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-size: .8rem; }
+</style>
+</head>
+<body>
+
+<h1>Widget Brand Preview</h1>
+
+<div class="brand-switcher">
+    <button class="brand-btn rcuk"     onclick="loadWidget('rcuk')">RCUK branding</button>
+    <button class="brand-btn alfonica" onclick="loadWidget('alfonica')">Alfonica branding</button>
+    <button class="brand-btn default"  onclick="loadWidget('')">Default (server settings)</button>
+</div>
+
+<p class="note">
+    On live sites the brand is detected automatically from the URL.<br>
+    e.g. any page on <code>rcuk.com</code> shows RCUK branding, <code>alfonica.com</code> shows Alfonica.<br>
+    No <code>data-brand</code> attribute needed on production embeds.
+</p>
+
+<script>
+const API = 'http://localhost:8080/chat'; // ← adjust if your server runs elsewhere
+
+function loadWidget(brand) {
+    // Remove existing widget
+    const old = document.getElementById('_cw_host_wrap');
+    if (old) old.remove();
+    const oldScript = document.getElementById('_cw_script');
+    if (oldScript) oldScript.remove();
+    // Reset widget state so it re-initialises
+    delete window.__ChatWidgetConfig;
+
+    const s = document.createElement('script');
+    s.id = '_cw_script';
+    s.src = API + '/widget/loader.js';
+    if (brand) s.dataset.brand = brand;
+    document.head.appendChild(s);
+}
+
+// Load default on page open
+loadWidget('');
+</script>
+</body>
+</html>

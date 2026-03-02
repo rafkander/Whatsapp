@@ -1,0 +1,105 @@
+<?php
+/**
+ * POST /api/widget/init.php
+ * Create or resume a visitor session → returns conv_id + settings
+ */
+require_once dirname(__DIR__, 2) . '/config.php';
+require_once dirname(__DIR__) . '/cors.php';
+require_once dirname(__DIR__) . '/helpers.php';
+
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    json_error('Method not allowed', 405);
+}
+
+$body     = request_body();
+$uid      = trim($body['uid'] ?? '');
+$name     = trim($body['name'] ?? '');
+$email    = trim($body['email'] ?? '');
+$phone    = trim($body['phone'] ?? '');
+$deptId   = !empty($body['dept_id']) ? (int)$body['dept_id'] : null;
+$pageUrl  = trim($body['page_url'] ?? '');
+$convId   = !empty($body['conv_id']) ? (int)$body['conv_id'] : null;
+
+// Generate UID if not provided
+if (!$uid) {
+    $uid = bin2hex(random_bytes(16));
+}
+
+$pdo     = db();
+$contact = get_or_create_contact($uid, compact('name', 'email', 'phone'));
+
+// Try to resume existing open conversation
+$conv = null;
+if ($convId) {
+    $stmt = $pdo->prepare("SELECT * FROM conversations WHERE id = ? AND contact_id = ? AND channel = 'widget'");
+    $stmt->execute([$convId, $contact['id']]);
+    $conv = $stmt->fetch();
+}
+
+// Or find latest open widget conversation for this contact
+if (!$conv) {
+    $stmt = $pdo->prepare("SELECT * FROM conversations WHERE contact_id = ? AND channel = 'widget' AND status = 'open' ORDER BY updated_at DESC LIMIT 1");
+    $stmt->execute([$contact['id']]);
+    $conv = $stmt->fetch();
+}
+
+// Create new conversation if none found and we have required info
+$isNew = false;
+if (!$conv && $name && $deptId !== null) {
+    $pdo->prepare("INSERT INTO conversations (contact_id, channel, dept_id, status, page_url, unread_agent) VALUES (?, 'widget', ?, 'open', ?, 1)")
+        ->execute([$contact['id'], $deptId, $pageUrl]);
+    $convId = (int)$pdo->lastInsertId();
+
+    $stmt = $pdo->prepare('SELECT * FROM conversations WHERE id = ?');
+    $stmt->execute([$convId]);
+    $conv  = $stmt->fetch();
+    $isNew = true;
+
+    // Auto-welcome trigger
+    $welcomeEnabled = (bool)get_setting('welcome_trigger_enabled', 1);
+    $welcomeDelay   = (int)get_setting('welcome_trigger_delay', 5);
+    $welcomeMsg     = get_setting('welcome_trigger_message', 'Hi! How can we help you today?');
+
+    if ($welcomeEnabled) {
+        // Insert as bot message with a scheduled note — client shows after delay
+        $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'bot', ?, 'text')")
+            ->execute([$convId, $welcomeMsg]);
+    }
+
+    // Check if agents offline → auto-reply
+    if (!any_agent_online() || !is_within_business_hours()) {
+        $offlineMsg = get_setting('offline_message', 'We are currently offline. Please leave a message and we will get back to you soon.');
+        $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'bot', ?, 'text')")
+            ->execute([$convId, $offlineMsg]);
+    }
+
+    notify_new_conversation($conv, $contact);
+} elseif (!$conv) {
+    // Need pre-chat info first — return settings only
+    $conv = null;
+}
+
+// Fetch departments
+$depts = $pdo->query('SELECT id, name, color FROM departments WHERE is_active = 1 ORDER BY sort_order ASC')->fetchAll();
+
+// Fetch settings for widget
+$settings = [
+    'color'       => get_setting('widget_color', '#2563eb'),
+    'greeting'    => get_setting('widget_greeting', 'Hi! How can we help you today?'),
+    'position'    => get_setting('widget_position', 'bottom-right'),
+    'name'        => get_setting('widget_name', 'Support Chat'),
+    'avatar'      => get_setting('widget_avatar', ''),
+    'welcome_delay' => (int)get_setting('welcome_trigger_delay', 5),
+];
+
+json_success([
+    'uid'          => $uid,
+    'conv_id'      => $conv ? (int)$conv['id'] : null,
+    'is_new'       => $isNew,
+    'contact'      => ['name' => $contact['name'], 'email' => $contact['email']],
+    'departments'  => $depts,
+    'settings'     => $settings,
+    'agents_online' => any_agent_online() && is_within_business_hours(),
+]);
