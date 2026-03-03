@@ -74,6 +74,7 @@ createApp({
         const activeConv     = ref(null);
         const activeMessages = ref([]);
         const unreadTotal    = ref(0);
+        const myOpenCount    = ref(0);
         const visitorTyping  = ref(false);
         const lastMsgId      = ref(0);
         // Persisted across refreshes so existing conversations don't re-notify
@@ -93,7 +94,8 @@ createApp({
         async function loadConversations() {
             const params = new URLSearchParams();
             if (['open','closed','pending'].includes(convFilter.value)) params.set('status', convFilter.value);
-            if (convFilter.value === 'mine')   params.set('mine', '1');
+            if (convFilter.value === 'open') params.set('unassigned', '1');
+            if (convFilter.value === 'mine')   { params.set('mine', '1'); params.set('status', 'open'); }
             if (convFilter.value === 'unread') params.set('unread', '1');
             if (convFilter.value === 'widget') params.set('channel', 'widget');
             if (convFilter.value === 'wa')     params.set('channel', 'whatsapp');
@@ -208,6 +210,7 @@ createApp({
             if (!res.success) return;
 
             unreadTotal.value = res.unread_total;
+            myOpenCount.value = res.my_open_count ?? myOpenCount.value;
 
             // ── New conversations ─────────────────────────────
             if (res.new_conversations?.length) {
@@ -351,6 +354,7 @@ createApp({
             const res = await api('PATCH', `agent/conversation.php?id=${activeConvId.value}`, { status: 'closed' });
             if (res.success) {
                 activeConv.value = res.conversation;
+                convFilter.value = 'closed';
                 await loadConversations();
                 toast('Conversation closed', 'success');
             }
@@ -695,20 +699,26 @@ createApp({
             return (ROLE_RANK[role] || 1) >= (ROLE_RANK[minRole] || 1);
         }
 
-        // Any agent can reply to any open conversation; auto-assigns on first reply
+        // Must take the conversation before replying — no role bypass
         const canReply = computed(() => {
             if (!activeConv.value) return false;
-            return activeConv.value.status !== 'closed';
+            if (activeConv.value.status === 'closed') return false;
+            return activeConv.value.assigned_agent_id == auth.agent.id;
         });
 
         async function takeConversation() {
+            if (!activeConvId.value) return;
             const res = await api('PATCH', `agent/conversation.php?id=${activeConvId.value}`, {
                 assigned_agent_id: auth.agent.id,
             });
             if (res.success) {
                 activeConv.value = res.conversation;
                 await loadMessages();
+                convFilter.value = 'mine';
+                await loadConversations();
                 toast('Conversation taken', 'success');
+            } else {
+                toast('Failed to take conversation: ' + (res.error || 'Unknown error'), 'error');
             }
         }
 
@@ -857,7 +867,6 @@ createApp({
             try {
                 const res  = await fetch(url, opts);
                 if (res.status === 401) {
-                    // Token expired
                     auth.token = '';
                     auth.agent = {};
                     localStorage.removeItem('_dash_token');
@@ -865,9 +874,15 @@ createApp({
                     stopPolling();
                     return { success: false, error: 'Session expired' };
                 }
-                return await res.json();
+                const text = await res.text();
+                try {
+                    return JSON.parse(text);
+                } catch (_) {
+                    console.error('Non-JSON response from', endpoint, ':', text.slice(0, 500));
+                    return { success: false, error: 'Server error: ' + text.slice(0, 200) };
+                }
             } catch (e) {
-                return { success: false, error: 'Network error' };
+                return { success: false, error: 'Network error: ' + e.message };
             }
         }
 
@@ -906,7 +921,7 @@ createApp({
             toasts,
             // Conversations
             conversations, convFilter, convSearch, activeConvId, activeConv, activeMessages,
-            unreadTotal, visitorTyping, departments, activeDepts, agents, contactHistory,
+            unreadTotal, myOpenCount, visitorTyping, departments, activeDepts, agents, contactHistory,
             loadConversations, debouncedLoadConvs, debouncedLoad: debouncedLoadConvs,
             openConversation, openConversationById,
             // Send
@@ -923,7 +938,7 @@ createApp({
             loadCanned, editCanned, saveCanned, deleteCanned,
             // Admin
             agentList, showAgentModal, editingAgent, agentForm, loadAgents, editAgent, saveAgent, deleteAgent,
-            showDeptModal, editingDept, deptForm, loadDepartments, saveDept, deleteDept,
+            showDeptModal, editingDept, deptForm, newDept, editDept, loadDepartments, saveDept, deleteDept,
             selectedDept, selectDept, saveDeptInline, isDeptMember, toggleDeptMember,
             settings, loadSettings, saveSettings, embedCode, embedCopied, copyEmbed,
             analytics, analyticsFrom, analyticsTo, loadAnalytics, barPct,

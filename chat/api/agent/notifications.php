@@ -54,6 +54,11 @@ $stmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE assigned_agent_i
 $stmt->execute([$agent['id']]);
 $myUnread = (int)$stmt->fetchColumn();
 
+// My total open conversations
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE assigned_agent_id = ? AND status = 'open'");
+$stmt->execute([$agent['id']]);
+$myOpenCount = (int)$stmt->fetchColumn();
+
 // Conversations recently assigned to me by someone else (within last 10 seconds, by ID > last seen)
 $stmt = $pdo->prepare("
     SELECT c.id, c.channel,
@@ -72,6 +77,7 @@ $assignedToMe = $stmt->fetchAll();
 json_success([
     'unread_total'      => $unreadCount,
     'my_unread'         => $myUnread,
+    'my_open_count'     => $myOpenCount,
     'new_conversations' => $newConvs,
     'assigned_to_me'    => $assignedToMe,
 ]);

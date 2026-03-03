@@ -54,22 +54,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $params  = [];
 
     if (array_key_exists('assigned_agent_id', $body)) {
-        $updates[] = 'assigned_agent_id = ?';
-        $params[]  = $body['assigned_agent_id'] ? (int)$body['assigned_agent_id'] : null;
+        $newAgentId = $body['assigned_agent_id'] ? (int)$body['assigned_agent_id'] : null;
+        $updates[]  = 'assigned_agent_id = ?';
+        $params[]   = $newAgentId;
 
-        if ($body['assigned_agent_id']) {
-            // System message
+        // Only log system message if the agent actually changed
+        if ($newAgentId && (int)($conv['assigned_agent_id'] ?? 0) !== $newAgentId) {
             $agentStmt = $pdo->prepare('SELECT name FROM agents WHERE id = ?');
-            $agentStmt->execute([(int)$body['assigned_agent_id']]);
+            $agentStmt->execute([$newAgentId]);
             $assignedAgent = $agentStmt->fetch();
             $msg = $assignedAgent ? "Conversation assigned to {$assignedAgent['name']}" : 'Conversation assigned';
             $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', ?, 'system')")->execute([$convId, $msg]);
 
-            // Stop bot when agent takes a WA conversation
-            if ($conv['channel'] === 'whatsapp' && ($conv['bot_state'] ?? '') !== 'done') {
-                $updates[] = 'bot_state = ?';
-                $params[]  = 'done';
-            }
+            // Stop bot when agent takes a WA conversation (only if column exists)
+            try {
+                $pdo->query('SELECT bot_state FROM conversations LIMIT 0');
+                if ($conv['channel'] === 'whatsapp' && ($conv['bot_state'] ?? '') !== 'done') {
+                    $updates[] = 'bot_state = ?';
+                    $params[]  = 'done';
+                }
+            } catch (\PDOException $e) { /* bot_state column not in schema, skip */ }
         }
     }
 

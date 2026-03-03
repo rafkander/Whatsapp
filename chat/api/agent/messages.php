@@ -64,6 +64,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conv = $stmt->fetch();
     if (!$conv) json_error('Not found', 404);
 
+    // Must be the assigned agent to reply — no role bypass
+    if ((int)$conv['assigned_agent_id'] !== (int)$agent['id']) {
+        json_error('Take this conversation before replying', 403);
+    }
+
     // Insert message
     $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, sender_id, content, type, file_url) VALUES (?, 'agent', ?, ?, ?, ?)")
         ->execute([$convId, $agent['id'], $content ?: null, $type, $fileUrl ?: null]);
@@ -72,14 +77,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Update conversation
     if ($type !== 'note') {
-        // Auto-assign to this agent if conversation is unassigned
-        if (!$conv['assigned_agent_id']) {
-            $pdo->prepare('UPDATE conversations SET assigned_agent_id = ?, bot_state = "done" WHERE id = ?')
-                ->execute([$agent['id'], $convId]);
-            $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', ?, 'system')")
-                ->execute([$convId, "Conversation assigned to {$agent['name']}"]);
-        }
-
         $pdo->prepare('UPDATE conversations SET updated_at = NOW(), unread_visitor = unread_visitor + 1, status = IF(status = "closed", "open", status) WHERE id = ?')
             ->execute([$convId]);
 

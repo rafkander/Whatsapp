@@ -17,9 +17,15 @@ require_once dirname(__DIR__) . '/helpers.php';
 function wa_bot_process(PDO $pdo, int $convId, string $from, string $content, ?string $interactiveId): void
 {
     // Fetch current conv state
-    $stmt = $pdo->prepare('SELECT bot_state, bot_data, assigned_agent_id FROM conversations WHERE id = ?');
-    $stmt->execute([$convId]);
-    $conv = $stmt->fetch();
+    try {
+        $stmt = $pdo->prepare('SELECT bot_state, bot_data, assigned_agent_id FROM conversations WHERE id = ?');
+        $stmt->execute([$convId]);
+        $conv = $stmt->fetch();
+    } catch (\PDOException $e) {
+        // bot_state/bot_data columns not yet in schema — migration needed
+        error_log('wa_bot: missing column — run: ALTER TABLE conversations ADD COLUMN bot_state VARCHAR(50) DEFAULT NULL, ADD COLUMN bot_data TEXT DEFAULT NULL');
+        return;
+    }
     if (!$conv) return;
 
     $state = $conv['bot_state'] ?? 'start';
@@ -199,7 +205,7 @@ function wa_bot_process(PDO $pdo, int $convId, string $from, string $content, ?s
 function wa_bot_send_greeting(string $from): void
 {
     wa_send_buttons($from,
-        "👋 Welcome to *UCC*! We're here to help.\n\nPlease select which team you'd like to speak with:",
+        "👋 Welcome to *RCG*! We're here to help.\n\nPlease select which team you'd like to speak with:",
         [
             ['id' => 'dept_retail',   'title' => 'Retail'],
             ['id' => 'dept_mobile',   'title' => 'Mobile'],

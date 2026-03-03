@@ -21,8 +21,9 @@ $status  = $_GET['status']  ?? '';   // open, closed, pending
 $deptId  = isset($_GET['dept_id']) ? (int)$_GET['dept_id'] : null;
 $channel = $_GET['channel'] ?? '';   // widget, whatsapp
 $search  = trim($_GET['search'] ?? '');
-$mine    = !empty($_GET['mine']);
-$unread  = !empty($_GET['unread']);
+$mine       = !empty($_GET['mine']);
+$unread     = !empty($_GET['unread']);
+$unassigned = !empty($_GET['unassigned']);
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $limit   = 30;
 $offset  = ($page - 1) * $limit;
@@ -58,6 +59,10 @@ if ($channel) {
 if ($mine) {
     $where[]  = 'c.assigned_agent_id = ?';
     $params[] = $agent['id'];
+}
+
+if ($unassigned) {
+    $where[] = 'c.assigned_agent_id IS NULL';
 }
 
 if ($unread) {

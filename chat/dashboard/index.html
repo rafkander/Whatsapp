@@ -176,6 +176,7 @@
                     <button class="folder-item" :class="{active: convFilter==='mine'}" @click="setFilter('mine')">
                         <span class="folder-item-icon">📬</span>
                         <span class="folder-item-label">My open</span>
+                        <span class="folder-item-count" v-if="myOpenCount > 0">{{ myOpenCount }}</span>
                     </button>
                     <button class="folder-item" :class="{active: convFilter==='closed'}" @click="setFilter('closed')">
                         <span class="folder-item-icon">✅</span>
@@ -242,9 +243,12 @@
                                     <span class="conv-preview">{{ c.last_message || 'No messages yet' }}</span>
                                     <span class="unread-badge" v-if="c.unread_agent>0">{{ c.unread_agent }}</span>
                                 </div>
-                                <div style="margin-top:4px" v-if="c.dept_name">
-                                    <span class="dept-pill" :style="{background:(c.dept_color||'#2563eb')+'18',color:c.dept_color||'#2563eb'}">
+                                <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+                                    <span v-if="c.dept_name" class="dept-pill" :style="{background:(c.dept_color||'#2563eb')+'18',color:c.dept_color||'#2563eb'}">
                                         {{ c.dept_name }}
+                                    </span>
+                                    <span v-if="c.agent_name" style="font-size:.68rem;color:#6b7280;white-space:nowrap">
+                                        Assigned to {{ c.agent_name }}
                                     </span>
                                 </div>
                             </div>
@@ -310,6 +314,11 @@
                                 </div>
                             </div>
                             <div class="chat-header-actions">
+                                <button class="hdr-btn take-btn" @click="takeConversation"
+                                        v-if="activeConv?.status!=='closed' && !canReply">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+                                    Take
+                                </button>
                                 <button class="hdr-btn" @click="showAssignModal=true" v-if="activeConv?.status!=='closed' && canAccess('supervisor')">
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                                     Assign
@@ -317,7 +326,7 @@
                                 <button class="hdr-btn success" @click="reopenConv" v-if="activeConv?.status==='closed'">
                                     ↺ Reopen
                                 </button>
-                                <button class="hdr-btn danger" @click="closeConv" v-if="activeConv?.status!=='closed'">
+                                <button class="hdr-btn danger" @click="closeConv" v-if="activeConv?.status!=='closed' && canReply">
                                     ✓ Close
                                 </button>
                             </div>
@@ -359,10 +368,10 @@
                             </div>
                         </div>
 
-                        <!-- Take-to-reply banner (shown when open but not assigned to current agent) -->
+                        <!-- Take-to-reply banner -->
                         <div class="take-banner" v-if="activeConv?.status!=='closed' && !canReply">
                             <span v-if="activeConv?.agent_name">
-                                🔒 This conversation is handled by <strong>{{ activeConv.agent_name }}</strong>
+                                🔒 This conversation is assigned to <strong>{{ activeConv.agent_name }}</strong>
                             </span>
                             <span v-else>
                                 🔒 No one has taken this conversation yet
