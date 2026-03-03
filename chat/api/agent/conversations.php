@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 $agent = require_agent();
+$pdo   = db();
 
 $status  = $_GET['status']  ?? '';   // open, closed, pending
 $deptId  = isset($_GET['dept_id']) ? (int)$_GET['dept_id'] : null;
@@ -28,6 +29,16 @@ $offset  = ($page - 1) * $limit;
 
 $where  = ['1=1'];
 $params = [];
+
+// Dept-based visibility: agents with dept memberships only see those depts + unassigned
+$deptRows = $pdo->prepare('SELECT dept_id FROM agent_departments WHERE agent_id = ?');
+$deptRows->execute([$agent['id']]);
+$agentDepts = $deptRows->fetchAll(PDO::FETCH_COLUMN);
+if ($agentDepts) {
+    $ph = implode(',', array_fill(0, count($agentDepts), '?'));
+    $where[] = "(c.dept_id IS NULL OR c.dept_id IN ({$ph}))";
+    foreach ($agentDepts as $d) $params[] = $d;
+}
 
 if ($status) {
     $where[]  = 'c.status = ?';
@@ -85,19 +96,25 @@ $sql = "
     LIMIT {$limit} OFFSET {$offset}
 ";
 
-$stmt = db()->prepare($sql);
+$stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $convs = $stmt->fetchAll();
 
 // Total count
 $countSql = "SELECT COUNT(*) FROM conversations c JOIN contacts co ON co.id = c.contact_id LEFT JOIN messages m_last ON m_last.id = (SELECT id FROM messages WHERE conversation_id = c.id AND type != 'note' ORDER BY id DESC LIMIT 1) WHERE {$whereStr}";
-$cstmt    = db()->prepare($countSql);
+$cstmt    = $pdo->prepare($countSql);
 $cstmt->execute($params);
 $total = (int)$cstmt->fetchColumn();
 
-// Unread count for badge
-$unreadStmt = db()->prepare("SELECT COUNT(*) FROM conversations WHERE unread_agent > 0 AND status = 'open'");
-$unreadStmt->execute();
+// Unread count — scoped to agent's visible depts
+if ($agentDepts) {
+    $ph2 = implode(',', array_fill(0, count($agentDepts), '?'));
+    $unreadStmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE unread_agent > 0 AND status = 'open' AND (dept_id IS NULL OR dept_id IN ({$ph2}))");
+    $unreadStmt->execute($agentDepts);
+} else {
+    $unreadStmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE unread_agent > 0 AND status = 'open'");
+    $unreadStmt->execute();
+}
 $unreadCount = (int)$unreadStmt->fetchColumn();
 
 json_success([

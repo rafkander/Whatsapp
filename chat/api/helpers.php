@@ -212,12 +212,21 @@ function get_or_create_contact(string $uid, array $fields = []): array {
 }
 
 // ── WhatsApp API ──────────────────────────────────────────────
+function wa_log(string $msg): void {
+    $logFile = dirname(__DIR__) . '/wa_send.log';
+    $line    = '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL;
+    file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
+}
+
 function wa_send_text(string $to, string $text): ?array {
     $phoneId = (defined('WA_PHONE_NUMBER_ID') && WA_PHONE_NUMBER_ID) ? WA_PHONE_NUMBER_ID : get_setting('wa_phone_number_id');
     $token   = (defined('WA_ACCESS_TOKEN')    && WA_ACCESS_TOKEN)    ? WA_ACCESS_TOKEN    : get_setting('wa_access_token');
     $version = (defined('WA_API_VERSION')     && WA_API_VERSION)     ? WA_API_VERSION     : 'v18.0';
 
-    if (!$phoneId || !$token) return null;
+    if (!$phoneId || !$token) {
+        wa_log("SEND FAILED — missing credentials. phoneId=" . ($phoneId ? 'set' : 'EMPTY') . " token=" . ($token ? 'set' : 'EMPTY'));
+        return null;
+    }
 
     $url = "https://graph.facebook.com/{$version}/{$phoneId}/messages";
     $payload = [
@@ -240,7 +249,14 @@ function wa_send_text(string $to, string $text): ?array {
     ]);
     $res  = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
     curl_close($ch);
+
+    if ($err) {
+        wa_log("CURL ERROR to={$to}: {$err}");
+    } else {
+        wa_log("SEND to={$to} status={$code} response=" . $res);
+    }
 
     return ['status' => $code, 'body' => json_decode($res, true)];
 }

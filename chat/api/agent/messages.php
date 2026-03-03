@@ -64,13 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conv = $stmt->fetch();
     if (!$conv) json_error('Not found', 404);
 
-    // Only the assigned agent (or supervisor+) can send messages
-    $agentLevel = role_level($agent['role']);
-    $isSupervisorPlus = $agentLevel >= role_level('supervisor');
-    if (!$isSupervisorPlus && (int)$conv['assigned_agent_id'] !== (int)$agent['id']) {
-        json_error('Take this conversation before replying', 403);
-    }
-
     // Insert message
     $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, sender_id, content, type, file_url) VALUES (?, 'agent', ?, ?, ?, ?)")
         ->execute([$convId, $agent['id'], $content ?: null, $type, $fileUrl ?: null]);
@@ -79,6 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Update conversation
     if ($type !== 'note') {
+        // Auto-assign to this agent if conversation is unassigned
+        if (!$conv['assigned_agent_id']) {
+            $pdo->prepare('UPDATE conversations SET assigned_agent_id = ?, bot_state = "done" WHERE id = ?')
+                ->execute([$agent['id'], $convId]);
+            $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', ?, 'system')")
+                ->execute([$convId, "Conversation assigned to {$agent['name']}"]);
+        }
+
         $pdo->prepare('UPDATE conversations SET updated_at = NOW(), unread_visitor = unread_visitor + 1, status = IF(status = "closed", "open", status) WHERE id = ?')
             ->execute([$convId]);
 
@@ -86,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->prepare("DELETE FROM typing_status WHERE conversation_id = ? AND sender_type = 'agent'")->execute([$convId]);
 
         // If WhatsApp conversation, send via WA API
+        $waWarning = null;
         if ($conv['channel'] === 'whatsapp') {
             $stmt = $pdo->prepare('SELECT whatsapp_number FROM contacts WHERE id = ?');
             $stmt->execute([$conv['contact_id']]);
@@ -100,11 +102,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $waRes = wa_send_text($waPhone, $content);
                 }
-                // Store WA message ID if returned
-                if (!empty($waRes['body']['messages'][0]['id'])) {
-                    $pdo->prepare('UPDATE messages SET wa_message_id = ? WHERE id = ?')
-                        ->execute([$waRes['body']['messages'][0]['id'], $msgId]);
+
+                if ($waRes === null) {
+                    $waWarning = 'WhatsApp credentials not configured. Message saved but not delivered to WhatsApp.';
+                } elseif ($waRes['status'] !== 200) {
+                    $errMsg = $waRes['body']['error']['message'] ?? 'Unknown error';
+                    $errCode = $waRes['body']['error']['code'] ?? $waRes['status'];
+                    $waWarning = "WhatsApp delivery failed (#{$errCode}): {$errMsg}";
+                } else {
+                    // Store WA message ID if returned
+                    if (!empty($waRes['body']['messages'][0]['id'])) {
+                        $pdo->prepare('UPDATE messages SET wa_message_id = ? WHERE id = ?')
+                            ->execute([$waRes['body']['messages'][0]['id'], $msgId]);
+                    }
                 }
+            } else {
+                $waWarning = 'No WhatsApp number on file for this contact.';
             }
         }
     }
@@ -112,6 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     json_success([
         'message_id' => $msgId,
         'sent_at'    => date('Y-m-d H:i:s'),
+        'wa_warning' => $waWarning ?? null,
     ]);
 }
 

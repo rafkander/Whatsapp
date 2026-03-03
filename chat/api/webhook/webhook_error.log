@@ -1,1 +1,2 @@
 [02-Mar-2026 20:00:08 UTC] WA webhook uncaught: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'bot_state' in 'field list' in /Users/RealAcc/Projects/Whatsapp/chat/api/bot/whatsapp.php:20
+[03-Mar-2026 09:09:30 UTC] WA webhook uncaught: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'bot_state' in 'field list' in /Users/RealAcc/Projects/Whatsapp/chat/api/bot/whatsapp.php:20

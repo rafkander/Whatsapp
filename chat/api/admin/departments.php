@@ -13,8 +13,24 @@ $pdo    = db();
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
-    $stmt = $pdo->query('SELECT * FROM departments ORDER BY sort_order ASC, name ASC');
-    json_success(['departments' => $stmt->fetchAll()]);
+    $stmt  = $pdo->query('SELECT * FROM departments ORDER BY sort_order ASC, name ASC');
+    $depts = $stmt->fetchAll();
+
+    // Attach member agents to each department
+    $mStmt = $pdo->query('
+        SELECT ad.dept_id, a.id, a.name, a.email, a.role, a.status
+        FROM agent_departments ad
+        JOIN agents a ON a.id = ad.agent_id
+        ORDER BY a.name
+    ');
+    $membersByDept = [];
+    foreach ($mStmt->fetchAll() as $m) {
+        $membersByDept[$m['dept_id']][] = $m;
+    }
+    foreach ($depts as &$d) {
+        $d['members'] = $membersByDept[$d['id']] ?? [];
+    }
+    json_success(['departments' => $depts]);
 }
 
 if ($method === 'POST') {
@@ -29,8 +45,15 @@ if ($method === 'POST') {
     // Get next sort order
     $maxOrder = (int)$pdo->query('SELECT MAX(sort_order) FROM departments')->fetchColumn();
 
-    $pdo->prepare('INSERT INTO departments (name, color, description, sort_order) VALUES (?, ?, ?, ?)')
-        ->execute([$name, $color, $desc ?: null, $maxOrder + 1]);
+    try {
+        $pdo->prepare('INSERT INTO departments (name, color, description, sort_order) VALUES (?, ?, ?, ?)')
+            ->execute([$name, $color, $desc ?: null, $maxOrder + 1]);
+    } catch (PDOException $e) {
+        if (str_contains($e->getMessage(), 'Duplicate') || $e->getCode() == 23000) {
+            json_error("A department named '{$name}' already exists");
+        }
+        json_error('Database error: ' . $e->getMessage());
+    }
 
     json_success(['id' => (int)$pdo->lastInsertId()], 201);
 }

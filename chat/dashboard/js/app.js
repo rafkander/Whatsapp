@@ -82,6 +82,7 @@ createApp({
         const notifiedAssignIds = new Set();
 
         const departments = ref([]);
+        const activeDepts = computed(() => departments.value.filter(d => d.is_active == 1));
         const agents      = ref([]);
         const contactHistory = ref([]);
 
@@ -307,9 +308,11 @@ createApp({
             });
 
             if (res.success) {
-                // Optimistically add the message
                 await loadMessages();
                 scrollToBottom();
+                if (res.wa_warning) {
+                    toast('⚠ ' + res.wa_warning, 'error');
+                }
             }
         }
 
@@ -512,14 +515,33 @@ createApp({
         const showDeptModal  = ref(false);
         const editingDept    = ref(null);
         const deptForm       = reactive({ name: '', color: '#2563eb', description: '' });
+        const selectedDept   = ref(null);   // dept open in right panel
 
         async function loadDepartments() {
             const res = await api('GET', 'admin/departments.php');
-            if (res.success) departments.value = res.departments;
+            if (res.success) {
+                departments.value = res.departments;
+                // Keep right-panel in sync after reload
+                if (selectedDept.value) {
+                    selectedDept.value = res.departments.find(d => d.id === selectedDept.value.id) || null;
+                }
+            }
+        }
+
+        function selectDept(d) {
+            selectedDept.value = d;
+            Object.assign(deptForm, { name: d.name, color: d.color, description: d.description || '' });
+        }
+
+        function newDept() {
+            selectedDept.value = null;
+            editingDept.value  = null;
+            Object.assign(deptForm, { name: '', color: '#2563eb', description: '' });
+            showDeptModal.value = true;
         }
 
         function editDept(d) {
-            editingDept.value  = d;
+            editingDept.value = d;
             Object.assign(deptForm, { name: d.name, color: d.color, description: d.description || '' });
             showDeptModal.value = true;
         }
@@ -534,15 +556,43 @@ createApp({
             if (res.success) {
                 showDeptModal.value = false;
                 await loadDepartments();
+                toast('Department saved', 'success');
+            } else {
+                toast(res.error || 'Failed to save department', 'error');
+            }
+        }
+
+        // Save name/colour from right panel inline form
+        async function saveDeptInline() {
+            if (!selectedDept.value) return;
+            const res = await api('PATCH', `admin/departments.php?id=${selectedDept.value.id}`, deptForm);
+            if (res.success) {
+                await loadDepartments();
                 toast('Saved', 'success');
+            } else {
+                toast(res.error || 'Failed to save', 'error');
             }
         }
 
         async function deleteDept(id) {
             if (!confirm('Remove this department? Existing conversations will be unassigned.')) return;
             await api('DELETE', `admin/departments.php?id=${id}`);
+            if (selectedDept.value?.id === id) selectedDept.value = null;
             await loadDepartments();
             toast('Removed', 'success');
+        }
+
+        function isDeptMember(agentId) {
+            return !!(selectedDept.value?.members?.find(m => m.id === agentId));
+        }
+
+        async function toggleDeptMember(agentId, checked) {
+            if (checked) {
+                await api('POST', 'admin/dept_agents.php', { dept_id: selectedDept.value.id, agent_id: agentId });
+            } else {
+                await api('DELETE', `admin/dept_agents.php?dept_id=${selectedDept.value.id}&agent_id=${agentId}`);
+            }
+            await loadDepartments();
         }
 
         // ── Settings (admin) ──────────────────────────────────
@@ -645,13 +695,10 @@ createApp({
             return (ROLE_RANK[role] || 1) >= (ROLE_RANK[minRole] || 1);
         }
 
-        // Can the current agent reply to the active conversation?
-        // Rules: must be the assigned agent, OR supervisor+
+        // Any agent can reply to any open conversation; auto-assigns on first reply
         const canReply = computed(() => {
             if (!activeConv.value) return false;
-            if (activeConv.value.status === 'closed') return false;
-            if (canAccess('supervisor')) return true;
-            return activeConv.value.assigned_agent_id == auth.agent.id;
+            return activeConv.value.status !== 'closed';
         });
 
         async function takeConversation() {
@@ -694,13 +741,24 @@ createApp({
             return palette[Math.abs(hash) % palette.length];
         }
 
+        // WhatsApp 24h window: expired if last visitor message > 24h ago
+        const waWindowExpired = computed(() => {
+            if (activeConv.value?.channel !== 'whatsapp') return false;
+            const msgs = activeMessages.value;
+            // Find the last visitor message
+            const lastVisitor = [...msgs].reverse().find(m => m.sender_type === 'visitor');
+            if (!lastVisitor) return true; // no visitor message yet
+            const diff = (Date.now() - new Date(lastVisitor.created_at).getTime()) / 1000;
+            return diff > 86400; // older than 24 hours
+        });
+
         const fmtDuration = formatDuration;
 
         // ── View Switching ────────────────────────────────────
         function switchView(v) {
             view.value = v;
             if (v === 'agents')      loadAgents();
-            if (v === 'departments') loadDepartments();
+            if (v === 'departments') { loadDepartments(); if (!agents.value.length) loadAgents(); }
             if (v === 'canned')      loadCanned();
             if (v === 'settings')    loadSettings();
             if (v === 'analytics')   loadAnalytics();
@@ -848,7 +906,7 @@ createApp({
             toasts,
             // Conversations
             conversations, convFilter, convSearch, activeConvId, activeConv, activeMessages,
-            unreadTotal, visitorTyping, departments, agents, contactHistory,
+            unreadTotal, visitorTyping, departments, activeDepts, agents, contactHistory,
             loadConversations, debouncedLoadConvs, debouncedLoad: debouncedLoadConvs,
             openConversation, openConversationById,
             // Send
@@ -865,11 +923,13 @@ createApp({
             loadCanned, editCanned, saveCanned, deleteCanned,
             // Admin
             agentList, showAgentModal, editingAgent, agentForm, loadAgents, editAgent, saveAgent, deleteAgent,
-            showDeptModal, editingDept, deptForm, loadDepartments, editDept, saveDept, deleteDept,
+            showDeptModal, editingDept, deptForm, loadDepartments, saveDept, deleteDept,
+            selectedDept, selectDept, saveDeptInline, isDeptMember, toggleDeptMember,
             settings, loadSettings, saveSettings, embedCode, embedCopied, copyEmbed,
             analytics, analyticsFrom, analyticsTo, loadAnalytics, barPct,
             // New WA conversation
             waNewModal, waNewPhone, waNewMsg, startWaConv,
+            waWindowExpired,
             // Access / view / filter / take
             canAccess, canReply, takeConversation,
             rankLabel, rankIcon, roleDescription, switchView, setFilter,
