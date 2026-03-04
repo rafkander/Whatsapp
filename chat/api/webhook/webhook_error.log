@@ -39,3 +39,4 @@
 [04-Mar-2026 19:30:19 UTC] WA webhook uncaught: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'wa_account_id' in 'where clause' in /Users/RealAcc/Projects/Whatsapp/chat/api/webhook/whatsapp.php:179
 [04-Mar-2026 19:30:31 UTC] WA webhook uncaught: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'wa_account_id' in 'where clause' in /Users/RealAcc/Projects/Whatsapp/chat/api/webhook/whatsapp.php:179
 [04-Mar-2026 19:33:59 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 371
+[04-Mar-2026 19:49:14 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 276
