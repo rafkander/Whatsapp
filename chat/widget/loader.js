@@ -18,7 +18,7 @@
     };
 
     const s  = document.createElement('script');
-    s.src    = apiBase + '/widget/widget.js';
+    s.src    = apiBase + '/widget/widget.js?v=' + Date.now();
     s.async  = true;
     document.head.appendChild(s);
 })();

@@ -2,4 +2,10 @@
     Header always set Access-Control-Allow-Origin "*"
     Header always set Access-Control-Allow-Methods "GET, OPTIONS"
     Header always set Access-Control-Allow-Headers "Content-Type"
+    # Never cache widget JS so visitors always get the latest version
+    <FilesMatch "\.(js)$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
 </IfModule>

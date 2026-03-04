@@ -211,6 +211,10 @@
 .offline-banner { background: #fef3c7; color: #92400e; font-size: .78rem; padding: 6px 14px; text-align: center; border-bottom: 1px solid #fde68a; flex-shrink: 0; }
 .closed-banner { background: #f1f5f9; color: var(--text-muted); font-size: .82rem; padding: 10px 14px; text-align: center; border-top: 1px solid var(--border); flex-shrink: 0; }
 .powered-by { text-align: center; font-size: .68rem; color: var(--text-muted); padding: 6px 0 4px; flex-shrink: 0; opacity: .6; }
+.msg-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.msg-btn { padding: 7px 14px; background: var(--bg); border: 1.5px solid var(--primary); color: var(--primary); border-radius: 20px; font-size: .84rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .15s, color .15s; white-space: nowrap; }
+.msg-btn:hover { background: var(--primary); color: #fff; }
+.msg-btn:disabled, .msg-btn.used { opacity: .45; cursor: default; border-color: var(--border); color: var(--text-muted); background: var(--bg); }
 @media (max-width: 480px) {
     .chat-window { width: 100%; max-width: 100%; height: 100%; max-height: 100%; bottom: 0; right: 0; left: 0 !important; border-radius: 0; }
     .chat-launcher { bottom: 16px; right: 16px; }
@@ -240,11 +244,14 @@
 
     // ── Init ──────────────────────────────────────────────────
     async function init() {
+        console.log('[CW] init() start — uid:', state.uid, 'conv_id:', state.convId);
         // Fetch settings + resume session
         const res = await api('POST', 'widget/init.php', {
             uid:    state.uid,
             conv_id: state.convId,
         });
+
+        console.log('[CW] init.php response:', res);
 
         if (res.uid) {
             state.uid = res.uid;
@@ -258,8 +265,9 @@
         if (res.conv_id) {
             state.convId = res.conv_id;
             localStorage.setItem('_cw_conv_id', res.conv_id);
-            state.phase = 'chat';
         }
+
+        console.log('[CW] state after init — uid:', state.uid, 'conv_id:', state.convId);
 
         // Build widget DOM
         mount();
@@ -268,15 +276,12 @@
         applyCssVars();
         applyPosition();
 
-        // If resuming conversation
-        if (state.phase === 'chat') {
-            showChat();
-            await loadAllMessages();
-            startPolling();
-            scrollBottom(true);
-        } else {
-            showPrechat();
-        }
+        // Always show chat — bot handles greeting/routing
+        state.phase = 'chat';
+        showChat();
+        await loadAllMessages();
+        startPolling();
+        scrollBottom(true);
 
         // Request notification permission
         if ('Notification' in window && Notification.permission === 'default') {
@@ -340,9 +345,6 @@
         shadow.querySelector('.btn-attach').addEventListener('click', triggerUpload);
         shadow.querySelector('#file-input').addEventListener('change', handleFileUpload);
 
-        // Pre-chat form
-        shadow.querySelector('#prechat-form')?.addEventListener('submit', handlePrechatSubmit);
-
         // Stars
         shadow.querySelectorAll('.star').forEach(star => {
             star.addEventListener('click', () => selectStar(parseInt(star.dataset.value)));
@@ -354,10 +356,7 @@
 
     function buildWindowHTML() {
         const name    = esc((BRAND && BRAND.name) || state.settings.name || 'Support Chat');
-        const tagline = esc((BRAND && BRAND.tagline) || '');
         const logo    = (BRAND && BRAND.logo) ? BRAND.logo : (state.settings.avatar || '');
-        const depts   = state.departments;
-        const deptOpts = depts.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
 
         const avatarHtml = logo
             ? `<img src="${esc(logo)}" alt="${name}" style="width:100%;height:100%;object-fit:contain;padding:4px">`
@@ -385,42 +384,9 @@
             ⚠️ We're currently offline — leave a message and we'll reply soon.
         </div>
 
-        <!-- Pre-chat Form -->
-        <form class="prechat" id="prechat-form" style="display:none">
-            <div class="prechat-brand">
-                <div class="prechat-brand-logo" style="${logo ? 'background:transparent;padding:0' : ''}">
-                    ${logo
-                        ? `<img src="${esc(logo)}" alt="${name}" style="width:36px;height:36px;object-fit:contain;border-radius:8px">`
-                        : `<svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>`
-                    }
-                </div>
-                <div class="prechat-brand-text">
-                    <div class="prechat-brand-name">${name}</div>
-                    <div class="prechat-brand-tagline">${tagline || 'Support Chat'}</div>
-                </div>
-            </div>
-            <div class="prechat-title">Start a conversation</div>
-            <div class="prechat-subtitle">Fill in your details and we'll be right with you.</div>
-            <div class="form-group">
-                <label class="form-label">Your Name *</label>
-                <input class="form-input" name="name" required placeholder="John Smith">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Email Address *</label>
-                <input class="form-input" type="email" name="email" required placeholder="john@company.com">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Department *</label>
-                <select class="form-select" name="dept_id" required>
-                    <option value="">— Select department —</option>
-                    ${deptOpts}
-                </select>
-            </div>
-            <button type="submit" class="btn-start">Start Chat →</button>
-        </form>
 
         <!-- Messages -->
-        <div class="messages-area" style="display:none"></div>
+        <div class="messages-area"></div>
 
         <!-- Typing -->
         <div class="typing-indicator" style="display:none;margin:4px 16px 4px">
@@ -443,7 +409,7 @@
         </div>
 
         <!-- Input -->
-        <div class="input-area" style="display:none">
+        <div class="input-area">
             <button class="input-btn btn-attach" aria-label="Attach file">
                 <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
             </button>
@@ -459,47 +425,8 @@
         `;
     }
 
-    // ── Pre-chat submit ───────────────────────────────────────
-    async function handlePrechatSubmit(e) {
-        e.preventDefault();
-        const form  = e.target;
-        const name   = form.name.value.trim();
-        const email  = form.email.value.trim();
-        const deptId = parseInt(form.dept_id.value);
-
-        if (!name || !email || !deptId) return;
-
-        form.querySelector('.btn-start').disabled = true;
-
-        const res = await api('POST', 'widget/init.php', {
-            uid:      state.uid,
-            name,
-            email,
-            dept_id:  deptId,
-            page_url: window.location.href,
-        });
-
-        if (res.conv_id) {
-            state.convId = res.conv_id;
-            localStorage.setItem('_cw_conv_id', res.conv_id);
-            state.phase  = 'chat';
-            showChat();
-            await loadAllMessages();
-            startPolling();
-        } else {
-            form.querySelector('.btn-start').disabled = false;
-        }
-    }
-
     // ── Show / Hide Phases ────────────────────────────────────
-    function showPrechat() {
-        shadow.querySelector('#prechat-form').style.display = '';
-        shadow.querySelector('.messages-area').style.display = 'none';
-        shadow.querySelector('.input-area').style.display = 'none';
-    }
-
     function showChat() {
-        shadow.querySelector('#prechat-form').style.display = 'none';
         shadow.querySelector('.messages-area').style.display = '';
         shadow.querySelector('.input-area').style.display = '';
         updateStatusBanner();
@@ -541,12 +468,15 @@
 
     // ── Load all messages (on resume) ─────────────────────────
     async function loadAllMessages() {
-        if (!state.convId) return;
+        if (!state.convId) { console.log('[CW] loadAllMessages: no convId, skipping'); return; }
+        console.log('[CW] loadAllMessages — conv_id:', state.convId, 'uid:', state.uid);
         const res = await api('GET', `widget/messages.php?conv_id=${state.convId}&uid=${state.uid}&last_id=0`);
+        console.log('[CW] loadAllMessages response:', res);
         if (res.messages) {
             res.messages.forEach(renderMessage);
             state.lastMsgId = res.messages.length ? parseInt(res.messages[res.messages.length - 1].id) : 0;
         }
+        console.log('[CW] loadAllMessages done — lastMsgId:', state.lastMsgId, 'count:', res.messages?.length ?? 0);
         if (res.conv_status === 'closed') showClosed(res.can_rate);
         scrollBottom(true);
     }
@@ -558,12 +488,18 @@
     }
 
     async function poll() {
-        if (!state.convId || state.phase === 'prechat') return;
+        if (!state.convId) return;
         try {
             const res = await api('GET', `widget/messages.php?conv_id=${state.convId}&uid=${state.uid}&last_id=${state.lastMsgId}`);
 
+            if (res.success === false) {
+                console.warn('[CW] poll error response:', res);
+            }
+
             if (res.messages?.length) {
+                console.log('[CW] poll got', res.messages.length, 'new messages, last_id was:', state.lastMsgId);
                 res.messages.forEach(msg => {
+                    console.log('[CW] rendering msg:', msg.id, msg.sender_type, msg.type, msg.content?.substring?.(0, 60));
                     renderMessage(msg);
                     if (!state.open && msg.sender_type !== 'visitor') {
                         state.unread++;
@@ -584,10 +520,18 @@
                 showClosed(res.can_rate);
             }
 
+            // Agent reopened the conversation — reset closed state
+            if (res.conv_status === 'open' && state.phase === 'closed') {
+                state.phase = 'chat';
+                state.ratingGiven = false;
+                if (closedBanner) closedBanner.style.display = 'none';
+                if (ratingSection) ratingSection.style.display = 'none';
+            }
+
             // Heartbeat
             api('POST', 'widget/heartbeat.php', { uid: state.uid, conv_id: state.convId });
 
-        } catch (e) { /* ignore poll errors */ }
+        } catch (e) { console.error('[CW] poll exception:', e); }
     }
 
     // ── Render Message ────────────────────────────────────────
@@ -599,7 +543,22 @@
         row.dataset.msgId = msg.id;
 
         let content = '';
-        if (msg.type === 'image' && msg.file_url) {
+        let buttonsHtml = '';
+
+        if (msg.type === 'buttons') {
+            try {
+                const parsed = JSON.parse(msg.content || '{}');
+                content = esc(parsed.text || '').replace(/\n/g, '<br>');
+                if (Array.isArray(parsed.buttons) && parsed.buttons.length) {
+                    const btns = parsed.buttons.map(b =>
+                        `<button class="msg-btn" data-id="${esc(b.id)}" data-title="${esc(b.title)}">${esc(b.title)}</button>`
+                    ).join('');
+                    buttonsHtml = `<div class="msg-buttons">${btns}</div>`;
+                }
+            } catch (_) {
+                content = esc(msg.content || '');
+            }
+        } else if (msg.type === 'image' && msg.file_url) {
             content = `<img class="msg-image" src="${esc(msg.file_url)}" alt="Image" loading="lazy">`;
         } else if (msg.type === 'file' && msg.file_url) {
             content = `<a class="msg-file-link" href="${esc(msg.file_url)}" target="_blank" rel="noopener">
@@ -617,9 +576,23 @@
             const sender = msg.sender_name ? `<div class="msg-sender">${esc(msg.sender_name)}</div>` : '';
             row.innerHTML = `
                 ${msg.sender_type !== 'visitor' ? sender : ''}
-                <div class="msg-bubble">${content}</div>
+                <div class="msg-bubble">${content}${buttonsHtml}</div>
                 <div class="msg-time">${time}</div>
             `;
+        }
+
+        // Wire up button clicks
+        if (buttonsHtml) {
+            row.querySelectorAll('.msg-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Disable all buttons in this message
+                    row.querySelectorAll('.msg-btn').forEach(b => {
+                        b.disabled = true;
+                        b.classList.add('used');
+                    });
+                    sendButtonReply(btn.dataset.id, btn.dataset.title);
+                });
+            });
         }
 
         messagesArea.appendChild(row);
@@ -645,6 +618,8 @@
             type: 'text',
         });
 
+        console.log('[CW] send.php response:', result);
+
         // Replace the temp ID with the real server ID so the next poll
         // won't render the same message again as a duplicate
         if (result.message_id) {
@@ -653,14 +628,44 @@
             if (result.message_id > state.lastMsgId) {
                 state.lastMsgId = result.message_id;
             }
+            console.log('[CW] lastMsgId updated to:', state.lastMsgId);
             // If visitor sent a message on a closed conversation it is now
-            // reopened — hide the closed banner and restart polling
+            // reopened — hide the closed banner (poll will confirm open status)
             if (state.phase === 'closed') {
                 state.phase = 'chat';
                 if (closedBanner) closedBanner.style.display = 'none';
                 if (ratingSection) ratingSection.style.display = 'none';
-                startPolling();
+                startPolling(); // Safety net — idempotent if already running
             }
+        }
+    }
+
+    // ── Send Button Reply ─────────────────────────────────────
+    async function sendButtonReply(buttonId, buttonTitle) {
+        if (!state.convId) return;
+
+        const fakeId  = 'tmp_' + Date.now();
+        const fakeMsg = { id: fakeId, sender_type: 'visitor', content: buttonTitle, type: 'text', created_at: new Date().toISOString() };
+        renderMessage(fakeMsg);
+        scrollBottom(true);
+
+        const result = await api('POST', 'widget/send.php', {
+            conv_id:        state.convId,
+            uid:            state.uid,
+            content:        buttonTitle,
+            type:           'text',
+            interactive_id: buttonId,
+        });
+
+        console.log('[CW] sendButtonReply send.php response:', result);
+
+        if (result.message_id) {
+            const tmpEl = shadow.querySelector('[data-msg-id="' + fakeId + '"]');
+            if (tmpEl) tmpEl.dataset.msgId = result.message_id;
+            if (result.message_id > state.lastMsgId) {
+                state.lastMsgId = result.message_id;
+            }
+            console.log('[CW] lastMsgId updated to:', state.lastMsgId);
         }
     }
 
@@ -705,10 +710,8 @@
     // ── Closed / Rating ──────────────────────────────────────
     function showClosed(canRate) {
         state.phase = 'closed';
-        // Keep polling stopped but don't hide the input — visitor can still
-        // send a new message which will reopen the conversation server-side
-        clearInterval(state.pollTimer);
-        state.pollTimer = null;
+        // Keep polling running — if the agent sends a new message it will
+        // reopen the conversation and the visitor should receive it.
 
         if (closedBanner) closedBanner.style.display = '';
 

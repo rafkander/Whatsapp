@@ -45,11 +45,11 @@ if (!$conv) {
     $conv = $stmt->fetch();
 }
 
-// Create new conversation if none found and we have required info
+// Create new conversation if none found — no pre-chat form required, bot handles routing
 $isNew = false;
-if (!$conv && $name && $deptId !== null) {
-    $pdo->prepare("INSERT INTO conversations (contact_id, channel, dept_id, status, page_url, unread_agent) VALUES (?, 'widget', ?, 'open', ?, 1)")
-        ->execute([$contact['id'], $deptId, $pageUrl]);
+if (!$conv) {
+    $pdo->prepare("INSERT INTO conversations (contact_id, channel, status, page_url, unread_agent) VALUES (?, 'widget', 'open', ?, 1)")
+        ->execute([$contact['id'], $pageUrl]);
     $convId = (int)$pdo->lastInsertId();
 
     $stmt = $pdo->prepare('SELECT * FROM conversations WHERE id = ?');
@@ -57,28 +57,15 @@ if (!$conv && $name && $deptId !== null) {
     $conv  = $stmt->fetch();
     $isNew = true;
 
-    // Auto-welcome trigger
-    $welcomeEnabled = (bool)get_setting('welcome_trigger_enabled', 1);
-    $welcomeDelay   = (int)get_setting('welcome_trigger_delay', 5);
-    $welcomeMsg     = get_setting('welcome_trigger_message', 'Hi! How can we help you today?');
-
-    if ($welcomeEnabled) {
-        // Insert as bot message with a scheduled note — client shows after delay
-        $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'bot', ?, 'text')")
-            ->execute([$convId, $welcomeMsg]);
-    }
-
-    // Check if agents offline → auto-reply
-    if (!any_agent_online() || !is_within_business_hours()) {
-        $offlineMsg = get_setting('offline_message', 'We are currently offline. Please leave a message and we will get back to you soon.');
-        $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'bot', ?, 'text')")
-            ->execute([$convId, $offlineMsg]);
-    }
-
     notify_new_conversation($conv, $contact);
-} elseif (!$conv) {
-    // Need pre-chat info first — return settings only
-    $conv = null;
+
+    // Run widget bot — sends greeting + dept selection buttons
+    try {
+        require_once dirname(__DIR__) . '/bot/widget.php';
+        wb_bot_process($pdo, $convId, '', null);
+    } catch (\Throwable $e) {
+        error_log('widget_bot init error: ' . $e->getMessage());
+    }
 }
 
 // Fetch departments

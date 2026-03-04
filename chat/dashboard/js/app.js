@@ -161,6 +161,13 @@ createApp({
                     notifyNewMsg(res.messages);
                 }
                 lastMsgId.value = parseInt(res.messages[res.messages.length - 1].id);
+
+                // If new messages arrived on a conversation we think is closed,
+                // refresh activeConv so the status and canReply update correctly
+                if (activeConv.value?.status === 'closed') {
+                    const convRes = await api('GET', `agent/conversation.php?id=${activeConvId.value}`);
+                    if (convRes.success) activeConv.value = convRes.conversation;
+                }
             }
             if (res.success) visitorTyping.value = !!res.visitor_typing;
         }
@@ -795,6 +802,11 @@ createApp({
 
         function truncate(str, n) {
             if (!str) return '';
+            // Extract text from bot button messages
+            try {
+                const p = JSON.parse(str);
+                if (p && Array.isArray(p.buttons)) str = p.text || str;
+            } catch (_) {}
             return str.length > n ? str.slice(0, n) + '…' : str;
         }
 
@@ -829,6 +841,15 @@ createApp({
 
         function nl2br(str) {
             if (!str) return '';
+            // Render bot button messages as text + button labels
+            try {
+                const p = JSON.parse(str);
+                if (p && Array.isArray(p.buttons)) {
+                    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    const btns = p.buttons.map(b => `<span style="display:inline-block;margin:2px 4px 0 0;padding:2px 10px;border:1px solid currentColor;border-radius:12px;font-size:.8rem;opacity:.75">${esc(b.title)}</span>`).join('');
+                    return `${esc(p.text||'').replace(/\n/g,'<br>')}<br>${btns}`;
+                }
+            } catch (_) {}
             return String(str)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/\n/g, '<br>');

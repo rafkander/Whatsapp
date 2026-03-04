@@ -20,3 +20,5 @@
 [04-Mar-2026 11:25:36 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 253
 [04-Mar-2026 11:28:03 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 346
 [04-Mar-2026 11:28:08 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 253
+[04-Mar-2026 11:35:53 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 346
+[04-Mar-2026 11:36:03 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 253

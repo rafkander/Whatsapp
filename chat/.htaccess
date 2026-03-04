@@ -54,3 +54,12 @@ Options -Indexes
     ExpiresByType image/gif "access plus 30 days"
     ExpiresByType image/svg+xml "access plus 30 days"
 </IfModule>
+
+# ── Never cache the chat widget JS (must always be fresh) ────
+<IfModule mod_headers.c>
+    <FilesMatch "^(widget|loader)\.js$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+</IfModule>

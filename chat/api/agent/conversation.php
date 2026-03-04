@@ -66,14 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
             $msg = $assignedAgent ? "Conversation assigned to {$assignedAgent['name']}" : 'Conversation assigned';
             $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', ?, 'system')")->execute([$convId, $msg]);
 
-            // Stop bot when agent takes a WA conversation (only if column exists)
-            try {
-                $pdo->query('SELECT bot_state FROM conversations LIMIT 0');
-                if ($conv['channel'] === 'whatsapp' && ($conv['bot_state'] ?? '') !== 'done') {
-                    $updates[] = 'bot_state = ?';
-                    $params[]  = 'done';
-                }
-            } catch (\PDOException $e) { /* bot_state column not in schema, skip */ }
+            // Stop bot when agent takes any conversation
+            if (($conv['bot_state'] ?? '') !== 'done') {
+                $updates[] = 'bot_state = ?';
+                $params[]  = 'done';
+            }
         }
     }
 
