@@ -3,15 +3,17 @@
  * WhatsApp Cloud API Webhook
  * GET  → verification challenge
  * POST → incoming messages / status updates
+ *
+ * Supports multiple WhatsApp accounts (wa_accounts table).
+ * Each incoming change is matched to an account by phone_number_id.
  */
 
-// Log all PHP errors to a file next to this script for easy diagnosis
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/webhook_error.log');
 
 set_exception_handler(function (Throwable $e) {
     error_log('WA webhook uncaught: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-    http_response_code(200); // Always 200 to WhatsApp
+    http_response_code(200);
     echo json_encode(['status' => 'error', 'msg' => $e->getMessage()]);
     exit;
 });
@@ -25,13 +27,34 @@ $pdo = db();
 
 // ── GET: Webhook Verification ────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $verifyToken = defined('WA_VERIFY_TOKEN') && WA_VERIFY_TOKEN ? WA_VERIFY_TOKEN : get_setting('wa_verify_token');
+    $mode      = $_GET['hub_mode']         ?? '';
+    $token     = $_GET['hub_verify_token'] ?? '';
+    $challenge = $_GET['hub_challenge']    ?? '';
 
-    $mode      = $_GET['hub_mode']          ?? '';
-    $token     = $_GET['hub_verify_token']  ?? '';
-    $challenge = $_GET['hub_challenge']     ?? '';
+    if ($mode !== 'subscribe') {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
 
-    if ($mode === 'subscribe' && hash_equals((string)$verifyToken, $token)) {
+    // Check against all enabled accounts' verify tokens
+    $stmt = $pdo->prepare('SELECT verify_token FROM wa_accounts WHERE is_enabled = 1');
+    $stmt->execute();
+    $verifyTokens = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    // Also accept the legacy global verify token
+    $legacyToken = get_setting('wa_verify_token');
+    if ($legacyToken) $verifyTokens[] = $legacyToken;
+
+    $verified = false;
+    foreach ($verifyTokens as $vt) {
+        if ($vt && hash_equals((string)$vt, $token)) {
+            $verified = true;
+            break;
+        }
+    }
+
+    if ($verified) {
         http_response_code(200);
         echo $challenge;
     } else {
@@ -47,8 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Gate: bail early if WA integration is disabled
-if (get_setting('wa_enabled') !== '1') {
+// Gate: bail if WA integration is globally disabled AND no accounts are enabled
+$anyAccountEnabled = (bool)$pdo->query('SELECT COUNT(*) FROM wa_accounts WHERE is_enabled = 1')->fetchColumn();
+if (!$anyAccountEnabled && get_setting('wa_enabled') !== '1') {
     http_response_code(200);
     echo json_encode(['status' => 'disabled']);
     exit;
@@ -58,12 +82,11 @@ $raw  = file_get_contents('php://input');
 $data = json_decode($raw, true);
 
 if (!$data) {
-    http_response_code(200); // Always 200 to WA
+    http_response_code(200);
     exit;
 }
 
-$object = $data['object'] ?? '';
-if ($object !== 'whatsapp_business_account') {
+if (($data['object'] ?? '') !== 'whatsapp_business_account') {
     http_response_code(200);
     exit;
 }
@@ -72,9 +95,22 @@ foreach ($data['entry'] ?? [] as $entry) {
     foreach ($entry['changes'] ?? [] as $change) {
         $value = $change['value'] ?? [];
 
+        // Identify which account this message came in on
+        $phoneNumberId = $value['metadata']['phone_number_id'] ?? null;
+        $account       = null;
+        if ($phoneNumberId) {
+            $stmt = $pdo->prepare('SELECT * FROM wa_accounts WHERE phone_number_id = ? AND is_enabled = 1');
+            $stmt->execute([$phoneNumberId]);
+            $account = $stmt->fetch() ?: null;
+        }
+
+        $creds     = $account ? ['phone_number_id' => $account['phone_number_id'], 'access_token' => $account['access_token']] : null;
+        $accountId = $account ? (int)$account['id'] : null;
+        $botFlow   = $account['bot_flow'] ?? 'standard';
+
         // ── Incoming Messages ─────────────────────────────────
         foreach ($value['messages'] ?? [] as $msg) {
-            handle_incoming_message($pdo, $msg, $value['contacts'] ?? []);
+            handle_incoming_message($pdo, $msg, $value['contacts'] ?? [], $creds, $accountId, $botFlow);
         }
 
         // ── Status Updates ────────────────────────────────────
@@ -90,11 +126,11 @@ exit;
 
 // ─────────────────────────────────────────────────────────────
 
-function handle_incoming_message(PDO $pdo, array $msg, array $waContacts): void {
-    $waId    = $msg['id']   ?? '';
-    $from    = $msg['from'] ?? ''; // phone number e.g. 447911123456
-    $type    = $msg['type'] ?? 'text';
-    $ts      = $msg['timestamp'] ?? time();
+function handle_incoming_message(PDO $pdo, array $msg, array $waContacts, ?array $creds, ?int $waAccountId, string $botFlow): void {
+    $waId = $msg['id']   ?? '';
+    $from = $msg['from'] ?? '';
+    $type = $msg['type'] ?? 'text';
+    $ts   = $msg['timestamp'] ?? time();
 
     if (!$from) return;
 
@@ -114,7 +150,6 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts): void 
 
     $uid = 'wa_' . $from;
 
-    // Check if contact exists by whatsapp_number
     $stmt = $pdo->prepare('SELECT * FROM contacts WHERE whatsapp_number = ?');
     $stmt->execute([$from]);
     $contact = $stmt->fetch();
@@ -127,34 +162,43 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts): void 
         $contact = $stmt->fetch();
     } else {
         $contactId = (int)$contact['id'];
-        // Update name if we got one
         if ($waContactName && !$contact['name']) {
             $pdo->prepare('UPDATE contacts SET name = ? WHERE id = ?')->execute([$waContactName, $contactId]);
         }
     }
 
-    // Find open conversation, or fall back to most recent closed one to reopen
-    $stmt = $pdo->prepare("SELECT * FROM conversations WHERE contact_id = ? AND channel = 'whatsapp' ORDER BY updated_at DESC LIMIT 1");
-    $stmt->execute([$contactId]);
+    // Find open or most recent conversation — filter by account if known
+    $convQuery = "SELECT * FROM conversations WHERE contact_id = ? AND channel = 'whatsapp'";
+    $convParams = [$contactId];
+    if ($waAccountId) {
+        $convQuery .= ' AND (wa_account_id = ? OR wa_account_id IS NULL)';
+        $convParams[] = $waAccountId;
+    }
+    $convQuery .= ' ORDER BY updated_at DESC LIMIT 1';
+
+    $stmt = $pdo->prepare($convQuery);
+    $stmt->execute($convParams);
     $conv = $stmt->fetch();
 
     if (!$conv) {
-        // No conversation at all — create one
-        $pdo->prepare("INSERT INTO conversations (contact_id, channel, status, unread_agent) VALUES (?, 'whatsapp', 'open', 1)")
-            ->execute([$contactId]);
+        $pdo->prepare("INSERT INTO conversations (contact_id, channel, wa_account_id, status, unread_agent) VALUES (?, 'whatsapp', ?, 'open', 1)")
+            ->execute([$contactId, $waAccountId]);
         $convId = (int)$pdo->lastInsertId();
         $isNew  = true;
     } elseif ($conv['status'] === 'closed') {
-        // Reopen the closed conversation, unassign it so it lands in the unassigned queue
         $convId = (int)$conv['id'];
-        $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, bot_state = NULL, bot_data = NULL, unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
-            ->execute([$convId]);
+        $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, bot_state = NULL, bot_data = NULL, wa_account_id = COALESCE(wa_account_id, ?), unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
+            ->execute([$waAccountId, $convId]);
         $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened by contact', 'system')")
             ->execute([$convId]);
-        $isNew = true; // treat reopen as new so the bot restarts the greeting flow
+        $isNew = true;
     } else {
         $convId = (int)$conv['id'];
-        $isNew  = false;
+        // Update account_id if it wasn't set yet
+        if ($waAccountId && !$conv['wa_account_id']) {
+            $pdo->prepare('UPDATE conversations SET wa_account_id = ? WHERE id = ?')->execute([$waAccountId, $convId]);
+        }
+        $isNew = false;
     }
 
     // Process message content
@@ -190,15 +234,14 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts): void 
             $msgType  = in_array($type, ['image']) ? 'image' : 'file';
             $content  = $caption ?: $filename;
             $fileName = $filename;
-
             if ($mediaId) {
-                $fileUrl = wa_download_media($mediaId);
+                $fileUrl = wa_download_media($mediaId, $creds);
             }
             break;
 
         case 'location':
-            $lat  = $msg['location']['latitude']  ?? '';
-            $lng  = $msg['location']['longitude'] ?? '';
+            $lat     = $msg['location']['latitude']  ?? '';
+            $lng     = $msg['location']['longitude'] ?? '';
             $content = "Location: {$lat}, {$lng}";
             break;
 
@@ -215,7 +258,6 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts): void 
     $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type, file_url, file_name, wa_message_id, created_at) VALUES (?, 'visitor', ?, ?, ?, ?, ?, ?)")
         ->execute([$convId, $content, $msgType, $fileUrl, $fileName, $waId, $created]);
 
-    // Update conversation
     $pdo->prepare('UPDATE conversations SET updated_at = NOW(), unread_agent = unread_agent + 1 WHERE id = ?')
         ->execute([$convId]);
 
@@ -223,7 +265,7 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts): void 
         notify_new_conversation(['id' => $convId, 'channel' => 'whatsapp', 'page_url' => ''], $contact);
     }
 
-    // ── Bot: run state machine if enabled and not already assigned ──
+    // ── Bot ──────────────────────────────────────────────────
     $botState        = $isNew ? 'start' : ($conv['bot_state'] ?? null);
     $alreadyAssigned = !$isNew && !empty($conv['assigned_agent_id']);
 
@@ -233,13 +275,13 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts): void 
         && !$alreadyAssigned
     ) {
         require_once dirname(__DIR__) . '/bot/whatsapp.php';
-        wa_bot_process($pdo, $convId, $from, $content, $interactiveId);
+        wa_bot_process($pdo, $convId, $from, $content, $interactiveId, $creds, $botFlow);
     }
 }
 
 function handle_status_update(PDO $pdo, array $status): void {
-    $waId     = $status['id']     ?? '';
-    $statusV  = $status['status'] ?? ''; // sent, delivered, read, failed
+    $waId    = $status['id']     ?? '';
+    $statusV = $status['status'] ?? '';
 
     if (!$waId) return;
 

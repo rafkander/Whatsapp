@@ -73,8 +73,9 @@ createApp({
         const activeConvId   = ref(null);
         const activeConv     = ref(null);
         const activeMessages = ref([]);
-        const unreadTotal    = ref(0);
-        const myOpenCount    = ref(0);
+        const unreadTotal      = ref(0);
+        const myOpenCount      = ref(0);
+        const unassignedCount  = ref(0);
         const visitorTyping  = ref(false);
         const lastMsgId      = ref(0);
         // Persisted across refreshes so existing conversations don't re-notify
@@ -217,8 +218,9 @@ createApp({
             const res = await api('GET', `agent/notifications.php?last_conv_id=${lastConvId.value}`);
             if (!res.success) return;
 
-            unreadTotal.value = res.unread_total;
-            myOpenCount.value = res.my_open_count ?? myOpenCount.value;
+            unreadTotal.value     = res.unread_total;
+            myOpenCount.value     = res.my_open_count     ?? myOpenCount.value;
+            unassignedCount.value = res.unassigned_count  ?? unassignedCount.value;
 
             // ── New conversations ─────────────────────────────
             if (res.new_conversations?.length) {
@@ -654,10 +656,68 @@ createApp({
             }
         }
 
+        // ── WhatsApp Accounts (admin) ─────────────────────────
+        const waAccounts        = ref([]);
+        const showWaAccountModal = ref(false);
+        const editingWaAccount  = ref(null);
+        const waAccountForm     = reactive({ name: '', phone_number_id: '', access_token: '', verify_token: '', bot_flow: 'standard', is_enabled: 1 });
+
+        async function loadWaAccounts() {
+            const res = await api('GET', 'admin/wa_accounts.php');
+            if (res.success) waAccounts.value = res.accounts;
+        }
+
+        function newWaAccount() {
+            editingWaAccount.value = null;
+            Object.assign(waAccountForm, { name: '', phone_number_id: '', access_token: '', verify_token: '', bot_flow: 'standard', is_enabled: 1 });
+            showWaAccountModal.value = true;
+        }
+
+        function editWaAccount(acc) {
+            editingWaAccount.value = acc;
+            Object.assign(waAccountForm, {
+                name: acc.name,
+                phone_number_id: acc.phone_number_id,
+                access_token: '',         // don't pre-fill token
+                verify_token: acc.verify_token,
+                bot_flow: acc.bot_flow,
+                is_enabled: acc.is_enabled,
+            });
+            showWaAccountModal.value = true;
+        }
+
+        async function saveWaAccount() {
+            let res;
+            if (editingWaAccount.value) {
+                res = await api('PATCH', `admin/wa_accounts.php?id=${editingWaAccount.value.id}`, { ...waAccountForm });
+            } else {
+                res = await api('POST', 'admin/wa_accounts.php', { ...waAccountForm });
+            }
+            if (res.success) {
+                showWaAccountModal.value = false;
+                await loadWaAccounts();
+                toast(editingWaAccount.value ? 'Account updated' : 'Number added', 'success');
+            } else {
+                toast(res.error || 'Failed to save', 'error');
+            }
+        }
+
+        async function deleteWaAccount(id) {
+            if (!confirm('Remove this WhatsApp number? Existing conversations will not be deleted.')) return;
+            const res = await api('DELETE', `admin/wa_accounts.php?id=${id}`);
+            if (res.success) {
+                await loadWaAccounts();
+                toast('Number removed', 'success');
+            } else {
+                toast(res.error || 'Failed to remove', 'error');
+            }
+        }
+
         // ── New WhatsApp conversation ─────────────────────────
-        const waNewModal = ref(false);
-        const waNewPhone = ref('');
-        const waNewMsg   = ref('');
+        const waNewModal      = ref(false);
+        const waNewPhone      = ref('');
+        const waNewMsg        = ref('');
+        const waNewAccountId  = ref(null);
 
         async function startWaConv() {
             if (!waNewPhone.value.trim() || !waNewMsg.value.trim()) {
@@ -665,8 +725,9 @@ createApp({
                 return;
             }
             const res = await api('POST', 'agent/wa_start.php', {
-                phone:   waNewPhone.value.trim(),
-                message: waNewMsg.value.trim(),
+                phone:      waNewPhone.value.trim(),
+                message:    waNewMsg.value.trim(),
+                account_id: waNewAccountId.value || null,
             });
             if (res.success) {
                 waNewModal.value = false;
@@ -772,6 +833,14 @@ createApp({
 
         const fmtDuration = formatDuration;
 
+        // Assignment select models (avoid DOM refs for cross-browser consistency)
+        const selectedAgentId = ref('');
+        const selectedDeptId  = ref('');
+        watch(activeConv, () => {
+            selectedAgentId.value = activeConv.value?.assigned_agent_id ?? '';
+            selectedDeptId.value  = activeConv.value?.dept_id ?? '';
+        }, { immediate: true });
+
         // ── View Switching ────────────────────────────────────
         function switchView(v) {
             view.value = v;
@@ -784,7 +853,7 @@ createApp({
             }
             if (v === 'departments') { loadDepartments(); if (!agents.value.length) loadAgents(); }
             if (v === 'canned')      loadCanned();
-            if (v === 'settings')    loadSettings();
+            if (v === 'settings')    { loadSettings(); loadWaAccounts(); }
             if (v === 'analytics')   loadAnalytics();
         }
 
@@ -921,6 +990,7 @@ createApp({
             loadDepartments();
             loadAgents();
             loadCanned();
+            loadWaAccounts();
             checkNotifications(true); // silent baseline — prevents re-alerting on refresh
             startPolling();
 
@@ -949,7 +1019,7 @@ createApp({
             toasts,
             // Conversations
             conversations, convFilter, convSearch, activeConvId, activeConv, activeMessages,
-            unreadTotal, myOpenCount, visitorTyping, departments, activeDepts, agents, contactHistory,
+            unreadTotal, myOpenCount, unassignedCount, visitorTyping, departments, activeDepts, agents, contactHistory,
             loadConversations, debouncedLoadConvs, debouncedLoad: debouncedLoadConvs,
             openConversation, openConversationById,
             // Send
@@ -958,7 +1028,7 @@ createApp({
             triggerFileUpload, uploadFile,
             // Conv actions
             closeConv, reopenConv,
-            showAssignModal, assignForm, submitAssign, assignAgent, assignDept,
+            showAssignModal, assignForm, submitAssign, assignAgent, assignDept, selectedAgentId, selectedDeptId,
             convTags, newTag, addTag, removeTag,
             statusMenuOpen, setStatus,
             // Canned
@@ -970,8 +1040,11 @@ createApp({
             selectedDept, selectDept, saveDeptInline, isDeptMember, toggleDeptMember,
             settings, loadSettings, saveSettings, embedCode, embedCopied, copyEmbed,
             analytics, analyticsFrom, analyticsTo, loadAnalytics, barPct,
+            // WhatsApp accounts management
+            waAccounts, showWaAccountModal, editingWaAccount, waAccountForm,
+            loadWaAccounts, newWaAccount, editWaAccount, saveWaAccount, deleteWaAccount,
             // New WA conversation
-            waNewModal, waNewPhone, waNewMsg, startWaConv,
+            waNewModal, waNewPhone, waNewMsg, waNewAccountId, startWaConv,
             waWindowExpired,
             // Access / view / filter / take
             canAccess, canReply, takeConversation,

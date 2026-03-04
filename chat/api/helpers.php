@@ -218,10 +218,33 @@ function wa_log(string $msg): void {
     file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
 }
 
-function wa_send_text(string $to, string $text): ?array {
+// Resolve credentials: use provided $creds array or fall back to config constants / settings table
+function wa_resolve_creds(?array $creds): array {
+    if ($creds && !empty($creds['phone_number_id']) && !empty($creds['access_token'])) {
+        return $creds;
+    }
     $phoneId = (defined('WA_PHONE_NUMBER_ID') && WA_PHONE_NUMBER_ID) ? WA_PHONE_NUMBER_ID : get_setting('wa_phone_number_id');
     $token   = (defined('WA_ACCESS_TOKEN')    && WA_ACCESS_TOKEN)    ? WA_ACCESS_TOKEN    : get_setting('wa_access_token');
-    $version = (defined('WA_API_VERSION')     && WA_API_VERSION)     ? WA_API_VERSION     : 'v18.0';
+    return ['phone_number_id' => $phoneId, 'access_token' => $token];
+}
+
+// Look up credentials for the WhatsApp account linked to a conversation
+function wa_creds_for_conv(PDO $pdo, int $convId): ?array {
+    $stmt = $pdo->prepare('
+        SELECT a.phone_number_id, a.access_token, a.name, a.bot_flow
+        FROM wa_accounts a
+        JOIN conversations c ON c.wa_account_id = a.id
+        WHERE c.id = ?
+    ');
+    $stmt->execute([$convId]);
+    return $stmt->fetch() ?: null;
+}
+
+function wa_send_text(string $to, string $text, ?array $creds = null): ?array {
+    $c       = wa_resolve_creds($creds);
+    $phoneId = $c['phone_number_id'];
+    $token   = $c['access_token'];
+    $version = (defined('WA_API_VERSION') && WA_API_VERSION) ? WA_API_VERSION : 'v18.0';
 
     if (!$phoneId || !$token) {
         wa_log("SEND FAILED — missing credentials. phoneId=" . ($phoneId ? 'set' : 'EMPTY') . " token=" . ($token ? 'set' : 'EMPTY'));
@@ -261,9 +284,10 @@ function wa_send_text(string $to, string $text): ?array {
     return ['status' => $code, 'body' => json_decode($res, true)];
 }
 
-function wa_download_media(string $mediaId): ?string {
-    $token   = (defined('WA_ACCESS_TOKEN') && WA_ACCESS_TOKEN) ? WA_ACCESS_TOKEN : get_setting('wa_access_token');
-    $version = (defined('WA_API_VERSION')  && WA_API_VERSION)  ? WA_API_VERSION  : 'v18.0';
+function wa_download_media(string $mediaId, ?array $creds = null): ?string {
+    $c       = wa_resolve_creds($creds);
+    $token   = $c['access_token'];
+    $version = (defined('WA_API_VERSION') && WA_API_VERSION) ? WA_API_VERSION : 'v18.0';
 
     // Get media URL
     $ch = curl_init("https://graph.facebook.com/{$version}/{$mediaId}");
@@ -320,10 +344,11 @@ function wa_download_media(string $mediaId): ?string {
 }
 
 // ── WhatsApp — low-level API call ─────────────────────────────
-function wa_api_call(string $to, array $payload): ?array {
-    $phoneId = (defined('WA_PHONE_NUMBER_ID') && WA_PHONE_NUMBER_ID) ? WA_PHONE_NUMBER_ID : get_setting('wa_phone_number_id');
-    $token   = (defined('WA_ACCESS_TOKEN')    && WA_ACCESS_TOKEN)    ? WA_ACCESS_TOKEN    : get_setting('wa_access_token');
-    $version = (defined('WA_API_VERSION')     && WA_API_VERSION)     ? WA_API_VERSION     : 'v18.0';
+function wa_api_call(string $to, array $payload, ?array $creds = null): ?array {
+    $c       = wa_resolve_creds($creds);
+    $phoneId = $c['phone_number_id'];
+    $token   = $c['access_token'];
+    $version = (defined('WA_API_VERSION') && WA_API_VERSION) ? WA_API_VERSION : 'v18.0';
 
     if (!$phoneId || !$token) return null;
 
@@ -349,7 +374,7 @@ function wa_api_call(string $to, array $payload): ?array {
 }
 
 // ── WhatsApp — interactive button message (max 3 buttons) ────
-function wa_send_buttons(string $to, string $body, array $buttons): ?array {
+function wa_send_buttons(string $to, string $body, array $buttons, ?array $creds = null): ?array {
     $btns = [];
     foreach (array_slice($buttons, 0, 3) as $btn) {
         $btns[] = [
@@ -367,11 +392,11 @@ function wa_send_buttons(string $to, string $body, array $buttons): ?array {
             'body' => ['text' => $body],
             'action' => ['buttons' => $btns],
         ],
-    ]);
+    ], $creds);
 }
 
 // ── WhatsApp — interactive list message (max 10 rows) ────────
-function wa_send_list(string $to, string $body, string $btnLabel, array $rows): ?array {
+function wa_send_list(string $to, string $body, string $btnLabel, array $rows, ?array $creds = null): ?array {
     $rowItems = [];
     foreach (array_slice($rows, 0, 10) as $row) {
         $rowItems[] = [
@@ -393,11 +418,11 @@ function wa_send_list(string $to, string $body, string $btnLabel, array $rows): 
                 ]],
             ],
         ],
-    ]);
+    ], $creds);
 }
 
 // ── WhatsApp — send media (image/document/video/audio) ────────
-function wa_send_media(string $to, string $type, string $url, ?string $caption = null, ?string $filename = null): ?array {
+function wa_send_media(string $to, string $type, string $url, ?string $caption = null, ?string $filename = null, ?array $creds = null): ?array {
     $media = ['link' => $url];
     if ($caption)  $media['caption']  = $caption;
     if ($filename) $media['filename'] = $filename;
@@ -405,7 +430,7 @@ function wa_send_media(string $to, string $type, string $url, ?string $caption =
     return wa_api_call($to, [
         'type'  => $type,
         $type   => $media,
-    ]);
+    ], $creds);
 }
 
 // ── User Agent Detection ──────────────────────────────────────
