@@ -833,6 +833,14 @@ createApp({
 
         const fmtDuration = formatDuration;
 
+        // Assignment select models (avoid DOM refs for cross-browser consistency)
+        const selectedAgentId = ref('');
+        const selectedDeptId  = ref('');
+        watch(activeConv, () => {
+            selectedAgentId.value = activeConv.value?.assigned_agent_id ?? '';
+            selectedDeptId.value  = activeConv.value?.dept_id ?? '';
+        }, { immediate: true });
+
         // ── View Switching ────────────────────────────────────
         function switchView(v) {
             view.value = v;
@@ -1020,7 +1028,7 @@ createApp({
             triggerFileUpload, uploadFile,
             // Conv actions
             closeConv, reopenConv,
-            showAssignModal, assignForm, submitAssign, assignAgent, assignDept,
+            showAssignModal, assignForm, submitAssign, assignAgent, assignDept, selectedAgentId, selectedDeptId,
             convTags, newTag, addTag, removeTag,
             statusMenuOpen, setStatus,
             // Canned

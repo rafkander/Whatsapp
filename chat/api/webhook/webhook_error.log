@@ -32,3 +32,5 @@
 [04-Mar-2026 17:22:54 UTC] WA webhook uncaught: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'chat_db.wa_accounts' doesn't exist in /Users/RealAcc/Projects/Whatsapp/chat/api/webhook/whatsapp.php:74
 [04-Mar-2026 17:23:00 UTC] WA webhook uncaught: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'chat_db.wa_accounts' doesn't exist in /Users/RealAcc/Projects/Whatsapp/chat/api/webhook/whatsapp.php:74
 [04-Mar-2026 17:28:23 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 371
+[04-Mar-2026 18:04:14 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 371
+[04-Mar-2026 18:04:22 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 276

@@ -270,8 +270,8 @@
                                 <div class="integration-card-title">WhatsApp</div>
                                 <div class="integration-card-sub">Respond to customers via WhatsApp</div>
                             </div>
-                            <span class="integration-card-badge" :class="(settings.wa_enabled==='1' && waAccounts.some(a => a.is_enabled)) ? 'badge-integrated' : ''">
-                                {{ (settings.wa_enabled==='1' && waAccounts.some(a => a.is_enabled)) ? 'Active' : 'Inactive' }}
+                            <span class="integration-card-badge" :class="waAccounts.some(a => a.is_enabled) ? 'badge-integrated' : ''">
+                                {{ waAccounts.some(a => a.is_enabled) ? 'Active' : 'Inactive' }}
                             </span>
                         </div>
                         <div class="integration-card">
@@ -389,7 +389,7 @@
                         <!-- Input -->
                         <div class="input-area" v-if="activeConv?.status!=='closed' && canReply">
                             <div class="canned-pop" v-if="cannedSuggestions.length">
-                                <div class="canned-pop-item" v-for="c in cannedSuggestions" :key="c.id" @click="applyCanned(c)">
+                                <div class="canned-pop-item" v-for="c in cannedSuggestions" :key="c.id" @mousedown.prevent="applyCanned(c)">
                                     <div class="canned-sc">/{{ c.shortcut }}</div>
                                     <div class="canned-ttl">{{ c.title }}</div>
                                     <div class="canned-prv">{{ c.content }}</div>
@@ -469,20 +469,20 @@
                             <div class="info-section-hd">Assignment</div>
                             <div class="info-kv">
                                 <div class="info-k">Assigned Agent</div>
-                                <select class="info-select" @change="assignAgent($event.target.value)">
+                                <select class="info-select" v-model="selectedAgentId"
+                                        @change="assignAgent(selectedAgentId)">
                                     <option value="">— Unassigned —</option>
-                                    <option v-for="a in agents" :key="a.id" :value="a.id"
-                                            :selected="activeConv?.agent_id==a.id">
+                                    <option v-for="a in agents" :key="a.id" :value="a.id">
                                         {{ a.name }} ({{ a.status }})
                                     </option>
                                 </select>
                             </div>
                             <div class="info-kv">
                                 <div class="info-k">Department</div>
-                                <select class="info-select" @change="assignDept($event.target.value)">
+                                <select class="info-select" v-model="selectedDeptId"
+                                        @change="assignDept(selectedDeptId)">
                                     <option value="">— No Department —</option>
-                                    <option v-for="d in activeDepts" :key="d.id" :value="d.id"
-                                            :selected="activeConv?.dept_id==d.id">{{ d.name }}</option>
+                                    <option v-for="d in activeDepts" :key="d.id" :value="d.id">{{ d.name }}</option>
                                 </select>
                             </div>
                         </div>
