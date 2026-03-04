@@ -139,31 +139,11 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts): void 
     $conv = $stmt->fetch();
 
     if (!$conv) {
-        // Reopen the most recent conversation if one exists (any status)
-        $stmt = $pdo->prepare("SELECT * FROM conversations WHERE contact_id = ? AND channel = 'whatsapp' ORDER BY updated_at DESC LIMIT 1");
-        $stmt->execute([$contactId]);
-        $existing = $stmt->fetch();
-
-        if ($existing) {
-            try {
-                $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, unread_agent = 1, bot_state = NULL, bot_data = NULL, updated_at = NOW() WHERE id = ?")
-                    ->execute([(int)$existing['id']]);
-            } catch (\PDOException $e) {
-                // bot_state column missing — update without it
-                $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, unread_agent = 1, updated_at = NOW() WHERE id = ?")
-                    ->execute([(int)$existing['id']]);
-            }
-            $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened', 'system')")
-                ->execute([(int)$existing['id']]);
-            $convId = (int)$existing['id'];
-            $conv   = null; // treat as new so bot restarts from 'start'
-            $isNew  = true;
-        } else {
-            $pdo->prepare("INSERT INTO conversations (contact_id, channel, status, unread_agent) VALUES (?, 'whatsapp', 'open', 1)")
-                ->execute([$contactId]);
-            $convId = (int)$pdo->lastInsertId();
-            $isNew  = true;
-        }
+        // Always create a new conversation
+        $pdo->prepare("INSERT INTO conversations (contact_id, channel, status, unread_agent) VALUES (?, 'whatsapp', 'open', 1)")
+            ->execute([$contactId]);
+        $convId = (int)$pdo->lastInsertId();
+        $isNew  = true;
     } else {
         $convId = (int)$conv['id'];
         $isNew  = false;

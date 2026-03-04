@@ -48,11 +48,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $step === 2) {
             $deptCount = (int)$pdo->query('SELECT COUNT(*) FROM departments')->fetchColumn();
             if ($deptCount === 0) {
                 $pdo->exec("INSERT IGNORE INTO `departments` (`name`, `color`, `sort_order`) VALUES
-                    ('UCC+ 9', '#7c3aed', 1),
-                    ('UCC Broadband', '#2563eb', 2),
-                    ('UCC Hosted', '#059669', 3),
-                    ('UCC Leased Line', '#d97706', 4),
-                    ('UCC Sales', '#dc2626', 5)");
+                    ('RCUK Retail', '#f59e0b', 1),
+                    ('RCUK Mobile', '#10b981', 2),
+                    ('UCC+ 9', '#7c3aed', 3),
+                    ('UCC Broadband', '#2563eb', 4),
+                    ('UCC Hosted', '#059669', 5),
+                    ('UCC Leased Line', '#d97706', 6),
+                    ('UCC Sales', '#dc2626', 7)");
             }
 
             $cannedCount = (int)$pdo->query('SELECT COUNT(*) FROM canned_responses')->fetchColumn();

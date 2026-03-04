@@ -218,11 +218,11 @@ function wa_bot_handle_dept(PDO $pdo, int $convId, string $from, string $id, arr
 {
     switch ($id) {
         case 'dept_retail':
-            wa_bot_route_basic($pdo, $convId, $from, 'Retail', $data);
+            wa_bot_route_basic($pdo, $convId, $from, 'RCUK Retail', $data);
             break;
 
         case 'dept_mobile':
-            wa_bot_route_basic($pdo, $convId, $from, 'Mobile', $data);
+            wa_bot_route_basic($pdo, $convId, $from, 'RCUK Mobile', $data);
             break;
 
         case 'dept_alfonica':
