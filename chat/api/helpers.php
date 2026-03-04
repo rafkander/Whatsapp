@@ -368,7 +368,6 @@ function wa_api_call(string $to, array $payload, ?array $creds = null): ?array {
     ]);
     $res  = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
 
     return ['status' => $code, 'body' => json_decode($res, true)];
 }
@@ -473,6 +472,114 @@ function any_agent_online(): bool {
     $stmt = db()->prepare("SELECT COUNT(*) FROM agents WHERE status = 'online'");
     $stmt->execute();
     return (int)$stmt->fetchColumn() > 0;
+}
+
+// ── Bitrix24 CRM Integration ──────────────────────────────────
+function bitrix24_lookup(?string $phone, ?string $email): ?array {
+    $webhookUrl = get_setting('bitrix24_webhook_url');
+    if (!$webhookUrl || (!$phone && !$email)) return null;
+
+    $contact = null;
+
+    // Try phone in multiple formats (Bitrix24 stores numbers with/without + and country code variants)
+    if ($phone) {
+        $digits = preg_replace('/\D/', '', $phone);
+        $candidates = array_unique(array_filter([
+            $digits,                              // 447385297011
+            '+' . $digits,                        // +447385297011
+            preg_replace('/^44/', '0', $digits),  // 07385297011  (UK local)
+        ]));
+        foreach ($candidates as $candidate) {
+            $contact = _b24_contact_list($webhookUrl, 'PHONE', $candidate);
+            if ($contact) break;
+        }
+    }
+
+    // Fallback to email
+    if (!$contact && $email) {
+        $contact = _b24_contact_list($webhookUrl, 'EMAIL', $email);
+    }
+
+    if (!$contact) return null;
+
+    // Fetch company if linked
+    if (!empty($contact['COMPANY_ID'])) {
+        $company = _b24_company_get($webhookUrl, $contact['COMPANY_ID']);
+        if ($company) $contact['_company'] = $company;
+    }
+
+    return $contact;
+}
+
+function bitrix24_cache_contact(int $contactId, ?array $result): void {
+    $json = $result ? json_encode($result, JSON_UNESCAPED_UNICODE) : null;
+    $b24id = $result['ID'] ?? null;
+    db()->prepare('UPDATE contacts SET bitrix24_data = ?, bitrix24_id = ?, bitrix24_synced_at = NOW() WHERE id = ?')
+        ->execute([$json, $b24id, $contactId]);
+}
+
+function bitrix24_get_fields(): ?array {
+    $webhookUrl = get_setting('bitrix24_webhook_url');
+    if (!$webhookUrl) return null;
+    $res = _b24_post($webhookUrl . 'crm.contact.fields', []);
+    return $res['result'] ?? null;
+}
+
+function _b24_contact_list(string $webhookUrl, string $type, string $value): ?array {
+    $filterKey = ($type === 'PHONE') ? 'PHONE' : 'EMAIL';
+    $payload = [
+        'filter' => [$filterKey => $value],
+        'select' => ['ID', 'NAME', 'LAST_NAME', 'SECOND_NAME', 'PHONE', 'EMAIL',
+                     'COMPANY_ID', 'COMPANY_TITLE', 'POST', 'COMMENTS'],
+    ];
+    $res = _b24_post($webhookUrl . 'crm.contact.list', $payload);
+    _b24_log("LIST type=$type value=$value response=" . json_encode($res));
+    $items = $res['result'] ?? [];
+    if (empty($items)) return null;
+    $id = $items[0]['ID'];
+    // Fetch full record
+    $full = _b24_post($webhookUrl . 'crm.contact.get', ['id' => $id]);
+    _b24_log("GET id=$id response=" . json_encode($full));
+    return $full['result'] ?? $items[0];
+}
+
+function _b24_log(string $msg): void {
+    $logFile = dirname(__DIR__) . '/b24.log';
+    file_put_contents($logFile, '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL, FILE_APPEND | LOCK_EX);
+}
+
+function _b24_company_get(string $webhookUrl, string $companyId): ?array {
+    $res = _b24_post($webhookUrl . 'crm.company.get', ['id' => $companyId]);
+    return $res['result'] ?? null;
+}
+
+function _b24_get(string $url): array {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_USERAGENT      => 'ChatSystem/1.0',
+    ]);
+    $raw = curl_exec($ch);
+    if (!$raw) return [];
+    return json_decode($raw, true) ?? [];
+}
+
+function _b24_post(string $url, array $payload): array {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($payload),
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_USERAGENT      => 'ChatSystem/1.0',
+    ]);
+    $raw = curl_exec($ch);
+    if (!$raw) return [];
+    return json_decode($raw, true) ?? [];
 }
 
 // ── Email Notification ────────────────────────────────────────

@@ -1246,6 +1246,13 @@ body {
 .info-v { font-size: .82rem; color: var(--text-2); word-break: break-word; }
 .info-v a { color: var(--blue); text-decoration: none; }
 .info-v a:hover { text-decoration: underline; }
+.info-edit-input {
+    width: 100%; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 8px; font-size: .8rem; color: var(--text-1);
+    background: var(--bg-1); outline: none;
+}
+.info-edit-input:focus { border-color: var(--blue); }
 
 .info-select {
     width: 100%;

@@ -226,3 +226,29 @@ INSERT IGNORE INTO `agents` (`name`, `email`, `password_hash`, `role`, `status`)
 
 -- NOTE: Default department, canned response, and trigger data is seeded
 -- by the installer (install/index.php) on first run only.
+
+-- ============================================================
+-- Bitrix24 CRM Integration (added 2026-03)
+-- ============================================================
+
+ALTER TABLE `contacts`
+  ADD COLUMN `bitrix24_data`      JSON        DEFAULT NULL AFTER `whatsapp_number`,
+  ADD COLUMN `bitrix24_id`        VARCHAR(50) DEFAULT NULL AFTER `bitrix24_data`,
+  ADD COLUMN `bitrix24_synced_at` DATETIME    DEFAULT NULL AFTER `bitrix24_id`;
+
+CREATE TABLE IF NOT EXISTS `bitrix24_field_config` (
+  `id`         INT(11)      NOT NULL AUTO_INCREMENT,
+  `field_key`  VARCHAR(100) NOT NULL,
+  `label`      VARCHAR(150) NOT NULL,
+  `field_type` VARCHAR(50)  DEFAULT 'string',
+  `is_enabled` TINYINT(1)   NOT NULL DEFAULT 1,
+  `sort_order` INT(11)      NOT NULL DEFAULT 0,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_field_key` (`field_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO `settings` (`key`, `value`) VALUES
+  ('bitrix24_enabled',     '0'),
+  ('bitrix24_webhook_url', ''),
+  ('bitrix24_cache_ttl',   '3600');
