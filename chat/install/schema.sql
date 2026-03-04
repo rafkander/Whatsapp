@@ -147,6 +147,16 @@ CREATE TABLE IF NOT EXISTS `typing_status` (
   CONSTRAINT `fk_typing_conv` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Agent Department memberships
+CREATE TABLE IF NOT EXISTS `agent_departments` (
+  `agent_id` int(11) NOT NULL,
+  `dept_id`  int(11) NOT NULL,
+  PRIMARY KEY (`agent_id`,`dept_id`),
+  KEY `dept_id` (`dept_id`),
+  CONSTRAINT `fk_ad_agent` FOREIGN KEY (`agent_id`) REFERENCES `agents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ad_dept`  FOREIGN KEY (`dept_id`)  REFERENCES `departments` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Agent Sessions (JWT blocklist / logout tracking)
 CREATE TABLE IF NOT EXISTS `agent_sessions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -191,6 +201,10 @@ INSERT IGNORE INTO `settings` (`key`, `value`) VALUES
 ('welcome_trigger_delay', '5'),
 ('welcome_trigger_message', 'Hi there! 👋 Is there anything we can help you with today?'),
 ('widget_allowed_origins', '*');
+
+-- Default super admin user
+INSERT IGNORE INTO `agents` (`name`, `email`, `password_hash`, `role`, `status`) VALUES
+('Rafael Kander', 'rafael.kander@rcuk.com', '$2y$12$98hOqT2uUoKzJ8m5qbLb8.K49ygGOmkIr6bZtFDCj4ALUAEWwvgGm', 'super_admin', 'online');
 
 -- NOTE: Default department, canned response, and trigger data is seeded
 -- by the installer (install/index.php) on first run only.
