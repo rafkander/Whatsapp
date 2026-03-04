@@ -32,7 +32,11 @@ if (!get_setting('bitrix24_enabled')) json_error('Bitrix24 integration is not en
 $phone = $contact['phone'] ?: $contact['whatsapp_number'];
 
 // Force lookup (ignore TTL)
-$result = bitrix24_lookup($phone, $contact['email']);
+try {
+    $result = bitrix24_lookup($phone, $contact['email']);
+} catch (\RuntimeException $e) {
+    json_error($e->getMessage(), 502);
+}
 bitrix24_cache_contact((int)$contact['id'], $result);
 
 // Fetch updated row

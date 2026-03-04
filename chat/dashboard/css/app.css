@@ -1246,13 +1246,30 @@ body {
 .info-v { font-size: .82rem; color: var(--text-2); word-break: break-word; }
 .info-v a { color: var(--blue); text-decoration: none; }
 .info-v a:hover { text-decoration: underline; }
+.contact-fields { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.contact-field { display: flex; flex-direction: column; gap: 3px; }
+.contact-field-label {
+    font-size: .67rem; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-3);
+}
+.contact-save-btn {
+    width: 100%; margin-top: 4px; font-size: .78rem;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.contact-save-spinner {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+    animation: spin .6s linear infinite; flex-shrink: 0;
+}
+
 .info-edit-input {
     width: 100%; box-sizing: border-box;
-    border: 1px solid var(--border); border-radius: 6px;
-    padding: 5px 8px; font-size: .8rem; color: var(--text-1);
+    border: 1.5px solid var(--border); border-radius: 6px;
+    padding: 6px 9px; font-size: .8rem; color: var(--text-1);
     background: var(--bg-1); outline: none;
+    transition: border-color .15s;
 }
-.info-edit-input:focus { border-color: var(--blue); }
+.info-edit-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 15%, transparent); }
 
 .info-select {
     width: 100%;
@@ -1724,6 +1741,7 @@ body {
     backdrop-filter: blur(10px);
 }
 @keyframes toastIn { from { transform:translateX(24px);opacity:0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
 .toast-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .toast.success .toast-dot { background: var(--online); }
 .toast.error   .toast-dot { background: #F87171; }

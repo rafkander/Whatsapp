@@ -534,6 +534,7 @@ function _b24_contact_list(string $webhookUrl, string $type, string $value): ?ar
     ];
     $res = _b24_post($webhookUrl . 'crm.contact.list', $payload);
     _b24_log("LIST type=$type value=$value response=" . json_encode($res));
+    if (isset($res['error'])) throw new \RuntimeException('Bitrix24 API error: ' . ($res['error_description'] ?? $res['error']));
     $items = $res['result'] ?? [];
     if (empty($items)) return null;
     $id = $items[0]['ID'];

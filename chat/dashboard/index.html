@@ -447,21 +447,22 @@
                         <!-- Details -->
                         <div class="info-section">
                             <div class="info-section-hd">Contact Details</div>
-                            <div style="margin:6px 0">
-                                <div style="margin-bottom:5px">
-                                    <div style="font-size:.68rem;color:var(--text-3);margin-bottom:2px">Name</div>
+                            <div class="contact-fields">
+                                <div class="contact-field">
+                                    <label class="contact-field-label">Name</label>
                                     <input class="info-edit-input" v-model="contactEditForm.name" placeholder="Full name">
                                 </div>
-                                <div style="margin-bottom:5px">
-                                    <div style="font-size:.68rem;color:var(--text-3);margin-bottom:2px">Email</div>
+                                <div class="contact-field">
+                                    <label class="contact-field-label">Email</label>
                                     <input class="info-edit-input" v-model="contactEditForm.email" placeholder="email@example.com" type="email">
                                 </div>
-                                <div style="margin-bottom:8px">
-                                    <div style="font-size:.68rem;color:var(--text-3);margin-bottom:2px">Phone</div>
+                                <div class="contact-field">
+                                    <label class="contact-field-label">Phone</label>
                                     <input class="info-edit-input" v-model="contactEditForm.phone" placeholder="+44 7700 000000" type="tel">
                                 </div>
-                                <button class="btn btn-primary" style="width:100%;font-size:.75rem;padding:5px 0"
+                                <button class="btn btn-primary contact-save-btn"
                                         @click="saveContactDetails" :disabled="contactEditLoading">
+                                    <span v-if="contactEditLoading" class="contact-save-spinner"></span>
                                     {{ contactEditLoading ? 'Saving…' : 'Save & Lookup CRM' }}
                                 </button>
                             </div>
