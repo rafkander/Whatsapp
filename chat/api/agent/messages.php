@@ -92,12 +92,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($contact && $contact['whatsapp_number']) {
                 $waPhone = $contact['whatsapp_number'];
+                $waCreds = wa_creds_for_conv($pdo, $convId); // per-account credentials
                 if ($type === 'image' && $fileUrl) {
-                    $waRes = wa_send_media($waPhone, 'image', $fileUrl, $content ?: null);
+                    $waRes = wa_send_media($waPhone, 'image', $fileUrl, $content ?: null, null, $waCreds);
                 } elseif ($type === 'file' && $fileUrl) {
-                    $waRes = wa_send_media($waPhone, 'document', $fileUrl, $content ?: null, basename($fileUrl));
+                    $waRes = wa_send_media($waPhone, 'document', $fileUrl, $content ?: null, basename($fileUrl), $waCreds);
                 } else {
-                    $waRes = wa_send_text($waPhone, $content);
+                    $waRes = wa_send_text($waPhone, $content, $waCreds);
                 }
 
                 if ($waRes === null) {
