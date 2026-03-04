@@ -38,9 +38,9 @@ if ($convId) {
     $conv = $stmt->fetch();
 }
 
-// Or find latest open widget conversation for this contact
+// Or find latest widget conversation for this contact (open or closed — closed convs reopen when visitor sends a message)
 if (!$conv) {
-    $stmt = $pdo->prepare("SELECT * FROM conversations WHERE contact_id = ? AND channel = 'widget' AND status = 'open' ORDER BY updated_at DESC LIMIT 1");
+    $stmt = $pdo->prepare("SELECT * FROM conversations WHERE contact_id = ? AND channel = 'widget' ORDER BY updated_at DESC LIMIT 1");
     $stmt->execute([$contact['id']]);
     $conv = $stmt->fetch();
 }

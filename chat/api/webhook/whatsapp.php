@@ -133,17 +133,25 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts): void 
         }
     }
 
-    // Find or reopen conversation — never create duplicates for the same contact
-    $stmt = $pdo->prepare("SELECT * FROM conversations WHERE contact_id = ? AND channel = 'whatsapp' AND status = 'open' ORDER BY updated_at DESC LIMIT 1");
+    // Find open conversation, or fall back to most recent closed one to reopen
+    $stmt = $pdo->prepare("SELECT * FROM conversations WHERE contact_id = ? AND channel = 'whatsapp' ORDER BY updated_at DESC LIMIT 1");
     $stmt->execute([$contactId]);
     $conv = $stmt->fetch();
 
     if (!$conv) {
-        // Always create a new conversation
+        // No conversation at all — create one
         $pdo->prepare("INSERT INTO conversations (contact_id, channel, status, unread_agent) VALUES (?, 'whatsapp', 'open', 1)")
             ->execute([$contactId]);
         $convId = (int)$pdo->lastInsertId();
         $isNew  = true;
+    } elseif ($conv['status'] === 'closed') {
+        // Reopen the closed conversation, unassign it so it lands in the unassigned queue
+        $convId = (int)$conv['id'];
+        $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, bot_state = NULL, bot_data = NULL, unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
+            ->execute([$convId]);
+        $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened by contact', 'system')")
+            ->execute([$convId]);
+        $isNew = false;
     } else {
         $convId = (int)$conv['id'];
         $isNew  = false;

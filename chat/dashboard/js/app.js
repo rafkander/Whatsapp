@@ -90,6 +90,7 @@ createApp({
         let pollTimer     = null;
         let notifTimer    = null;
         let debounceTimer = null;
+        let agentsTimer   = null;
 
         async function loadConversations() {
             const params = new URLSearchParams();
@@ -774,7 +775,13 @@ createApp({
         // ── View Switching ────────────────────────────────────
         function switchView(v) {
             view.value = v;
-            if (v === 'agents')      loadAgents();
+            if (v === 'agents') {
+                loadAgents();
+                if (!agentsTimer) agentsTimer = setInterval(loadAgents, 30000);
+            } else {
+                clearInterval(agentsTimer);
+                agentsTimer = null;
+            }
             if (v === 'departments') { loadDepartments(); if (!agents.value.length) loadAgents(); }
             if (v === 'canned')      loadCanned();
             if (v === 'settings')    loadSettings();

@@ -561,6 +561,35 @@
                     </div>
                     <button class="btn btn-primary" @click="showAgentModal=true; editingAgent=null; Object.assign(agentForm,{name:'',email:'',password:'',role:'agent'})">+ Add Agent</button>
                 </div>
+                <!-- Online Now -->
+                <div class="card" style="margin-bottom:18px">
+                    <div class="card-hd" style="display:flex;align-items:center;gap:8px">
+                        <span style="width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block"></span>
+                        Online Now ({{ agentList.filter(a=>a.status==='online').length }})
+                        <span v-if="agentList.filter(a=>a.status==='away').length" style="margin-left:8px;display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:.8rem">
+                            <span style="width:8px;height:8px;border-radius:50%;background:#facc15;display:inline-block"></span>
+                            Away ({{ agentList.filter(a=>a.status==='away').length }})
+                        </span>
+                    </div>
+                    <div style="padding:0 16px 14px;display:flex;flex-wrap:wrap;gap:10px">
+                        <div v-if="!agentList.filter(a=>a.status==='online'||a.status==='away').length"
+                             style="color:var(--text-muted);font-size:.84rem;padding:6px 0">No staff online</div>
+                        <div v-for="a in agentList.filter(a=>a.status==='online'||a.status==='away')" :key="a.id"
+                             style="display:flex;align-items:center;gap:8px;background:var(--bg-secondary,#f8fafc);border-radius:8px;padding:7px 12px;min-width:140px">
+                            <div style="position:relative;flex-shrink:0">
+                                <div :style="{width:'32px',height:'32px',borderRadius:'50%',background:avatarColor(a.name),display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:'.72rem'}">
+                                    {{ initials(a.name) }}
+                                </div>
+                                <span :style="{position:'absolute',bottom:'0',right:'0',width:'9px',height:'9px',borderRadius:'50%',border:'2px solid #fff',background: a.status==='online' ? '#4ade80' : '#facc15'}"></span>
+                            </div>
+                            <div>
+                                <div style="font-weight:600;font-size:.83rem">{{ a.name }}</div>
+                                <div style="font-size:.72rem;color:var(--text-muted)">{{ rankLabel(a.role) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-hd">Team Members ({{ agentList.length }})</div>
                     <table class="data-table">
