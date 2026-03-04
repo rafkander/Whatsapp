@@ -151,7 +151,7 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts): void 
             ->execute([$convId]);
         $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened by contact', 'system')")
             ->execute([$convId]);
-        $isNew = false;
+        $isNew = true; // treat reopen as new so the bot restarts the greeting flow
     } else {
         $convId = (int)$conv['id'];
         $isNew  = false;
