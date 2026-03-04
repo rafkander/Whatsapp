@@ -447,20 +447,41 @@
                         <!-- Details -->
                         <div class="info-section">
                             <div class="info-section-hd">Contact Details</div>
-                            <div class="info-kv" v-if="activeConv?.whatsapp_number">
-                                <div class="info-k">WhatsApp</div>
-                                <div class="info-v">📱 {{ activeConv.whatsapp_number }}</div>
+                            <div style="margin:6px 0">
+                                <div style="margin-bottom:5px">
+                                    <div style="font-size:.68rem;color:var(--text-3);margin-bottom:2px">Name</div>
+                                    <input class="info-edit-input" v-model="contactEditForm.name" placeholder="Full name">
+                                </div>
+                                <div style="margin-bottom:5px">
+                                    <div style="font-size:.68rem;color:var(--text-3);margin-bottom:2px">Email</div>
+                                    <input class="info-edit-input" v-model="contactEditForm.email" placeholder="email@example.com" type="email">
+                                </div>
+                                <div style="margin-bottom:8px">
+                                    <div style="font-size:.68rem;color:var(--text-3);margin-bottom:2px">Phone</div>
+                                    <input class="info-edit-input" v-model="contactEditForm.phone" placeholder="+44 7700 000000" type="tel">
+                                </div>
+                                <button class="btn btn-primary" style="width:100%;font-size:.75rem;padding:5px 0"
+                                        @click="saveContactDetails" :disabled="contactEditLoading">
+                                    {{ contactEditLoading ? 'Saving…' : 'Save & Lookup CRM' }}
+                                </button>
                             </div>
-                            <div class="info-kv"><div class="info-k">Browser</div><div class="info-v">{{ activeConv?.browser||'—' }}</div></div>
-                            <div class="info-kv"><div class="info-k">OS</div><div class="info-v">{{ activeConv?.os||'—' }}</div></div>
-                            <div class="info-kv"><div class="info-k">IP Address</div><div class="info-v">{{ activeConv?.ip||'—' }}</div></div>
-                            <div class="info-kv" v-if="activeConv?.page_url">
-                                <div class="info-k">Page</div>
-                                <div class="info-v"><a :href="activeConv.page_url" target="_blank">{{ truncate(activeConv.page_url,38) }}</a></div>
-                            </div>
-                            <div class="info-kv">
-                                <div class="info-k">Started</div>
-                                <div class="info-v">{{ formatDate(activeConv?.created_at) }} {{ formatTime(activeConv?.created_at) }}</div>
+                            <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+                                <div class="info-kv" v-if="activeConv?.page_url">
+                                    <div class="info-k">Page</div>
+                                    <div class="info-v"><a :href="activeConv.page_url" target="_blank" style="word-break:break-all">{{ truncate(activeConv.page_url,40) }}</a></div>
+                                </div>
+                                <div class="info-kv" v-if="activeConv?.browser && activeConv.browser !== 'Unknown'">
+                                    <div class="info-k">Browser / OS</div>
+                                    <div class="info-v">{{ activeConv.browser }}{{ activeConv.os && activeConv.os !== 'Unknown' ? ' · ' + activeConv.os : '' }}</div>
+                                </div>
+                                <div class="info-kv" v-if="activeConv?.ip">
+                                    <div class="info-k">IP</div>
+                                    <div class="info-v">{{ activeConv.ip }}</div>
+                                </div>
+                                <div class="info-kv">
+                                    <div class="info-k">Started</div>
+                                    <div class="info-v">{{ formatDate(activeConv?.created_at) }} {{ formatTime(activeConv?.created_at) }}</div>
+                                </div>
                             </div>
                         </div>
 
@@ -502,13 +523,55 @@
                             </div>
                         </div>
 
-                        <!-- History -->
+                        <!-- Bitrix24 CRM -->
+                        <div class="info-section" v-if="bitrix24Enabled">
+                            <div class="info-section-hd" style="display:flex;align-items:center;justify-content:space-between">
+                                <span>Bitrix24 CRM</span>
+                                <button class="btn btn-xs" @click="refreshBitrix24" :disabled="bitrix24Loading"
+                                        style="font-size:.68rem;padding:2px 8px;line-height:1.4">
+                                    {{ bitrix24Loading ? '…' : 'Refresh' }}
+                                </button>
+                            </div>
+                            <div v-if="bitrix24Data">
+                                <template v-for="field in bitrix24Fields" :key="field.field_key">
+                                <div class="info-kv" v-if="bitrix24Data[field.field_key] !== undefined && bitrix24Data[field.field_key] !== null && bitrix24Data[field.field_key] !== ''">
+                                    <div class="info-k">{{ field.label }}</div>
+                                    <div class="info-v" style="word-break:break-word">
+                                        <template v-if="Array.isArray(bitrix24Data[field.field_key])">
+                                            <div v-for="item in bitrix24Data[field.field_key]" :key="item.VALUE || item">
+                                                {{ item.VALUE || item }}
+                                            </div>
+                                        </template>
+                                        <template v-else>{{ bitrix24Data[field.field_key] }}</template>
+                                    </div>
+                                </div>
+                                </template>
+                                <div v-if="bitrix24Data._company" class="info-kv">
+                                    <div class="info-k">Company</div>
+                                    <div class="info-v">{{ bitrix24Data._company.TITLE || bitrix24Data._company.ID }}</div>
+                                </div>
+                                <div style="font-size:.7rem;color:var(--text-3);margin-top:6px" v-if="bitrix24SyncedAt">
+                                    Last synced {{ timeAgo(bitrix24SyncedAt) }} ago
+                                </div>
+                            </div>
+                            <div v-else style="font-size:.78rem;color:var(--text-3);padding:4px 0">
+                                No CRM record found.
+                                <span v-if="bitrix24SyncedAt" style="font-size:.7rem;display:block;margin-top:2px">Last checked {{ timeAgo(bitrix24SyncedAt) }} ago</span>
+                            </div>
+                        </div>
+
+                        <!-- History (collapsed by default) -->
                         <div class="info-section" v-if="contactHistory.length>0">
-                            <div class="info-section-hd">History ({{ contactHistory.length }})</div>
-                            <div v-for="h in contactHistory" :key="h.id"
-                                 class="hist-item" @click="openConversationById(h.id)">
-                                <div class="hist-date">{{ formatDate(h.created_at) }}</div>
-                                <div class="hist-prev">{{ h.last_message||'No messages' }}</div>
+                            <div class="info-section-hd" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" @click="historyOpen=!historyOpen">
+                                <span>History ({{ contactHistory.length }})</span>
+                                <span style="font-size:.75rem;color:var(--text-3)">{{ historyOpen ? '▲' : '▼' }}</span>
+                            </div>
+                            <div v-if="historyOpen">
+                                <div v-for="h in contactHistory" :key="h.id"
+                                     class="hist-item" @click="openConversationById(h.id)">
+                                    <div class="hist-date">{{ formatDate(h.created_at) }}</div>
+                                    <div class="hist-prev">{{ h.last_message||'No messages' }}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -893,6 +956,62 @@
                         <div class="modal-ft">
                             <button class="btn btn-ghost" @click="showWaAccountModal=false">Cancel</button>
                             <button class="btn btn-primary" @click="saveWaAccount">{{ editingWaAccount ? 'Save Changes' : 'Add Number' }}</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bitrix24 CRM Integration Card -->
+                <div class="card settings-section" v-if="canAccess('admin')">
+                    <div class="card-hd">🔗 Bitrix24 CRM Integration</div>
+                    <div style="padding:20px">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+                            <div class="f-group" style="margin-bottom:0">
+                                <div class="toggle-wrap">
+                                    <label class="toggle"><input type="checkbox" v-model="bitrix24Settings.enabled" :true-value="true" :false-value="false"><span class="toggle-track"></span></label>
+                                    <span class="toggle-lbl">Enable Bitrix24 Integration</span>
+                                </div>
+                            </div>
+                            <div class="f-group" style="margin-bottom:0">
+                                <label class="f-label">Cache TTL (seconds)</label>
+                                <input class="f-input" type="number" v-model.number="bitrix24Settings.cache_ttl" min="60" placeholder="3600">
+                            </div>
+                        </div>
+                        <div class="f-group">
+                            <label class="f-label">Webhook URL</label>
+                            <input class="f-input" type="text" v-model="bitrix24Settings.webhook_url" placeholder="https://your-domain.bitrix24.com/rest/1/xxxxx/">
+                            <div class="f-hint">Paste your Bitrix24 REST webhook URL. It must have CRM contact read permissions.</div>
+                        </div>
+                        <div style="display:flex;gap:10px;margin-bottom:20px">
+                            <button class="btn btn-primary" @click="saveBitrix24Credentials">Save Credentials</button>
+                            <button class="btn" @click="loadBitrix24Fields" :disabled="bitrix24FieldsLoading">
+                                {{ bitrix24FieldsLoading ? 'Loading…' : 'Load Fields from Bitrix24' }}
+                            </button>
+                        </div>
+
+                        <!-- Field configuration table -->
+                        <div v-if="bitrix24AvailableFields.length || bitrix24FieldConfig.length">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                                <div class="f-label" style="margin-bottom:0">CRM Fields to Display in Sidebar</div>
+                                <button class="btn btn-primary btn-sm" @click="saveBitrix24FieldConfig" style="font-size:.75rem;padding:4px 12px">Save Field Config</button>
+                            </div>
+                            <div style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
+                                <table class="data-table" style="font-size:.8rem">
+                                    <thead><tr><th style="width:36px">Show</th><th>Field Key</th><th>Label (editable)</th><th>Type</th></tr></thead>
+                                    <tbody>
+                                        <tr v-for="field in (bitrix24AvailableFields.length ? bitrix24AvailableFields : bitrix24FieldConfig)" :key="field.field_key">
+                                            <td style="text-align:center">
+                                                <input type="checkbox" v-model="field.is_enabled" :true-value="true" :false-value="false" style="width:15px;height:15px;cursor:pointer">
+                                            </td>
+                                            <td><code style="font-size:.72rem">{{ field.field_key }}</code></td>
+                                            <td><input class="f-input" style="padding:3px 6px;font-size:.78rem;margin:0" v-model="field.label"></td>
+                                            <td style="color:var(--text-3)">{{ field.field_type }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div v-else style="color:var(--text-3);font-size:.82rem;text-align:center;padding:14px;border:1px dashed var(--border);border-radius:8px">
+                            Click <strong>Load Fields from Bitrix24</strong> to see available CRM fields.
                         </div>
                     </div>
                 </div>

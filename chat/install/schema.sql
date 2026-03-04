@@ -53,11 +53,27 @@ CREATE TABLE IF NOT EXISTS `contacts` (
   UNIQUE KEY `whatsapp_number` (`whatsapp_number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- WhatsApp Accounts (multi-number support)
+CREATE TABLE IF NOT EXISTS `wa_accounts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `phone_number_id` varchar(100) NOT NULL,
+  `access_token` text NOT NULL,
+  `verify_token` varchar(100) NOT NULL,
+  `bot_flow` enum('standard','alfonica') NOT NULL DEFAULT 'standard',
+  `is_enabled` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `phone_number_id` (`phone_number_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Conversations
 CREATE TABLE IF NOT EXISTS `conversations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `contact_id` int(11) NOT NULL,
   `channel` enum('widget','whatsapp') NOT NULL DEFAULT 'widget',
+  `wa_account_id` int(11) DEFAULT NULL,
   `dept_id` int(11) DEFAULT NULL,
   `assigned_agent_id` int(11) DEFAULT NULL,
   `status` enum('open','closed','pending') NOT NULL DEFAULT 'open',
@@ -73,11 +89,13 @@ CREATE TABLE IF NOT EXISTS `conversations` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `contact_id` (`contact_id`),
+  KEY `wa_account_id` (`wa_account_id`),
   KEY `dept_id` (`dept_id`),
   KEY `assigned_agent_id` (`assigned_agent_id`),
   KEY `status` (`status`),
   KEY `channel` (`channel`),
   CONSTRAINT `fk_conv_contact` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_conv_wa_account` FOREIGN KEY (`wa_account_id`) REFERENCES `wa_accounts` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_conv_dept` FOREIGN KEY (`dept_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_conv_agent` FOREIGN KEY (`assigned_agent_id`) REFERENCES `agents` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -208,3 +226,29 @@ INSERT IGNORE INTO `agents` (`name`, `email`, `password_hash`, `role`, `status`)
 
 -- NOTE: Default department, canned response, and trigger data is seeded
 -- by the installer (install/index.php) on first run only.
+
+-- ============================================================
+-- Bitrix24 CRM Integration (added 2026-03)
+-- ============================================================
+
+ALTER TABLE `contacts`
+  ADD COLUMN `bitrix24_data`      JSON        DEFAULT NULL AFTER `whatsapp_number`,
+  ADD COLUMN `bitrix24_id`        VARCHAR(50) DEFAULT NULL AFTER `bitrix24_data`,
+  ADD COLUMN `bitrix24_synced_at` DATETIME    DEFAULT NULL AFTER `bitrix24_id`;
+
+CREATE TABLE IF NOT EXISTS `bitrix24_field_config` (
+  `id`         INT(11)      NOT NULL AUTO_INCREMENT,
+  `field_key`  VARCHAR(100) NOT NULL,
+  `label`      VARCHAR(150) NOT NULL,
+  `field_type` VARCHAR(50)  DEFAULT 'string',
+  `is_enabled` TINYINT(1)   NOT NULL DEFAULT 1,
+  `sort_order` INT(11)      NOT NULL DEFAULT 0,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_field_key` (`field_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO `settings` (`key`, `value`) VALUES
+  ('bitrix24_enabled',     '0'),
+  ('bitrix24_webhook_url', ''),
+  ('bitrix24_cache_ttl',   '3600');

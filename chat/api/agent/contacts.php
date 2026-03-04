@@ -51,7 +51,20 @@ $stmt = $pdo->prepare("
 $stmt->execute([$contactId]);
 $history = $stmt->fetchAll();
 
+// Bitrix24 enrichment
+$b24Enabled = (bool)(int)get_setting('bitrix24_enabled', '0');
+$b24Data    = null;
+$b24Fields  = [];
+if ($b24Enabled) {
+    $b24Data = !empty($contact['bitrix24_data']) ? json_decode($contact['bitrix24_data'], true) : null;
+    $b24Fields = $pdo->query('SELECT * FROM bitrix24_field_config WHERE is_enabled = 1 ORDER BY sort_order ASC, id ASC')->fetchAll();
+}
+
 json_success([
-    'contact' => $contact,
-    'history' => $history,
+    'contact'          => $contact,
+    'history'          => $history,
+    'bitrix24_enabled' => $b24Enabled,
+    'bitrix24'         => $b24Data,
+    'bitrix24_fields'  => $b24Fields,
+    'bitrix24_synced_at' => $contact['bitrix24_synced_at'] ?? null,
 ]);

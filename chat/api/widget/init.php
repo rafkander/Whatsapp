@@ -81,7 +81,19 @@ $settings = [
     'welcome_delay' => (int)get_setting('welcome_trigger_delay', 5),
 ];
 
-json_success([
+// ── Bitrix24 deferred lookup ───────────────────────────────────
+// Decide whether a lookup is needed BEFORE flushing the response.
+$b24Enabled = (bool)(int)get_setting('bitrix24_enabled', '0');
+$doB24Lookup = false;
+if ($b24Enabled && ($contact['phone'] || $contact['email'])) {
+    $ttl     = (int)get_setting('bitrix24_cache_ttl', '3600');
+    $synced  = $contact['bitrix24_synced_at'] ?? null;
+    $expired = !$synced || (time() - strtotime($synced) > $ttl);
+    $doB24Lookup = $expired;
+}
+
+// Send response to browser first
+$responsePayload = json_encode(['success' => true,
     'uid'          => $uid,
     'conv_id'      => $conv ? (int)$conv['id'] : null,
     'is_new'       => $isNew,
@@ -90,3 +102,24 @@ json_success([
     'settings'     => $settings,
     'agents_online' => any_agent_online() && is_within_business_hours(),
 ]);
+http_response_code(200);
+header('Content-Length: ' . strlen($responsePayload));
+echo $responsePayload;
+
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+} else {
+    if (ob_get_level()) { ob_end_flush(); }
+    flush();
+}
+
+// ── Background: Bitrix24 lookup (runs after response sent) ───
+if ($doB24Lookup) {
+    try {
+        $b24result = bitrix24_lookup($contact['phone'] ?? null, $contact['email'] ?? null);
+        bitrix24_cache_contact((int)$contact['id'], $b24result);
+    } catch (\Throwable $e) {
+        error_log('bitrix24 lookup error: ' . $e->getMessage());
+    }
+}
+exit;

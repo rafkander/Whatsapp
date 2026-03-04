@@ -88,6 +88,24 @@ createApp({
         const agents      = ref([]);
         const contactHistory = ref([]);
 
+        // ── Bitrix24 sidebar state ────────────────────────────
+        const bitrix24Data      = ref(null);
+        const bitrix24Fields    = ref([]);
+        const bitrix24Enabled   = ref(false);
+        const bitrix24SyncedAt  = ref(null);
+        const bitrix24Loading   = ref(false);
+
+        // ── Contact edit state ────────────────────────────────
+        const contactEditForm    = reactive({ name: '', email: '', phone: '' });
+        const contactEditLoading = ref(false);
+        const historyOpen        = ref(false);
+
+        // ── Bitrix24 admin state ──────────────────────────────
+        const bitrix24Settings       = reactive({ enabled: false, webhook_url: '', cache_ttl: 3600 });
+        const bitrix24AvailableFields = ref([]);
+        const bitrix24FieldConfig    = ref([]);
+        const bitrix24FieldsLoading  = ref(false);
+
         let pollTimer     = null;
         let notifTimer    = null;
         let debounceTimer = null;
@@ -121,6 +139,7 @@ createApp({
             lastMsgId.value = 0;
             visitorTyping.value = false;
             contactHistory.value = [];
+            historyOpen.value = false;
 
             // Fetch full conv details
             const res = await api('GET', `agent/conversation.php?id=${conv.id}`);
@@ -135,7 +154,15 @@ createApp({
             // Load contact info + history
             const cRes = await api('GET', `agent/contacts.php?conv_id=${conv.id}`);
             if (cRes.success) {
-                contactHistory.value = cRes.history || [];
+                contactHistory.value    = cRes.history || [];
+                bitrix24Enabled.value   = !!cRes.bitrix24_enabled;
+                bitrix24Data.value      = cRes.bitrix24 || null;
+                bitrix24Fields.value    = cRes.bitrix24_fields || [];
+                bitrix24SyncedAt.value  = cRes.bitrix24_synced_at || null;
+                // Populate contact edit form (phone falls back to whatsapp_number)
+                contactEditForm.name  = cRes.contact?.name  || '';
+                contactEditForm.email = cRes.contact?.email || '';
+                contactEditForm.phone = cRes.contact?.phone || cRes.contact?.whatsapp_number || '';
             }
 
             // Load agents & depts for assign dropdowns
@@ -363,8 +390,9 @@ createApp({
             if (!confirm('Close this conversation?')) return;
             const res = await api('PATCH', `agent/conversation.php?id=${activeConvId.value}`, { status: 'closed' });
             if (res.success) {
-                activeConv.value = res.conversation;
-                convFilter.value = 'closed';
+                activeConvId.value = null;
+                activeConv.value = null;
+                convFilter.value = 'open';
                 await loadConversations();
                 toast('Conversation closed', 'success');
             }
@@ -841,6 +869,96 @@ createApp({
             selectedDeptId.value  = activeConv.value?.dept_id ?? '';
         }, { immediate: true });
 
+        // ── Contact Details Update ────────────────────────────
+        async function saveContactDetails() {
+            if (!activeConv.value?.contact_id) return;
+            contactEditLoading.value = true;
+            const res = await api('PATCH', 'agent/contact_update.php', {
+                contact_id: activeConv.value.contact_id,
+                ...contactEditForm,
+            });
+            contactEditLoading.value = false;
+            if (res.success) {
+                if (res.bitrix24)       bitrix24Data.value     = res.bitrix24;
+                if (res.bitrix24_synced_at) bitrix24SyncedAt.value = res.bitrix24_synced_at;
+                toast('Contact details saved', 'success');
+            } else {
+                toast(res.error || 'Save failed', 'error');
+            }
+        }
+
+        // ── Bitrix24 Functions ────────────────────────────────
+        async function refreshBitrix24() {
+            if (!activeConvId.value) return;
+            bitrix24Loading.value = true;
+            const res = await api('POST', 'agent/bitrix_lookup.php', { conv_id: activeConvId.value });
+            bitrix24Loading.value = false;
+            if (res.success) {
+                bitrix24Data.value     = res.bitrix24_data || null;
+                bitrix24SyncedAt.value = res.synced_at || null;
+                toast(res.found ? 'CRM record refreshed' : 'No CRM record found', res.found ? 'success' : 'info');
+            } else {
+                toast(res.error || 'Refresh failed', 'error');
+            }
+        }
+
+        async function loadBitrix24Settings() {
+            const res = await api('GET', 'admin/bitrix.php?action=credentials');
+            if (res.success) {
+                bitrix24Settings.enabled     = res.enabled;
+                bitrix24Settings.webhook_url = res.webhook_url;
+                bitrix24Settings.cache_ttl   = res.cache_ttl;
+            }
+            await loadBitrix24FieldConfig();
+        }
+
+        async function saveBitrix24Credentials() {
+            const res = await api('POST', 'admin/bitrix.php?action=credentials', {
+                enabled:     bitrix24Settings.enabled ? 1 : 0,
+                webhook_url: bitrix24Settings.webhook_url,
+                cache_ttl:   bitrix24Settings.cache_ttl,
+            });
+            if (res.success) toast('Bitrix24 credentials saved', 'success');
+            else toast(res.error || 'Save failed', 'error');
+        }
+
+        async function loadBitrix24Fields() {
+            bitrix24FieldsLoading.value = true;
+            const res = await api('GET', 'admin/bitrix.php?action=fields');
+            bitrix24FieldsLoading.value = false;
+            if (res.success) {
+                // Convert Bitrix24 field map into flat array, merge with existing config
+                const existingMap = {};
+                bitrix24FieldConfig.value.forEach(f => { existingMap[f.field_key] = f; });
+                bitrix24AvailableFields.value = Object.entries(res.fields).map(([key, meta], i) => ({
+                    field_key:  key,
+                    label:      existingMap[key]?.label || (meta.listLabel || meta.title || key),
+                    field_type: meta.type || 'string',
+                    is_enabled: existingMap[key] ? !!existingMap[key].is_enabled : false,
+                    sort_order: existingMap[key]?.sort_order ?? i,
+                }));
+            } else {
+                toast(res.error || 'Failed to load fields', 'error');
+            }
+        }
+
+        async function loadBitrix24FieldConfig() {
+            const res = await api('GET', 'admin/bitrix.php?action=field_config');
+            if (res.success) bitrix24FieldConfig.value = res.fields || [];
+        }
+
+        async function saveBitrix24FieldConfig() {
+            const fields = (bitrix24AvailableFields.value.length ? bitrix24AvailableFields.value : bitrix24FieldConfig.value)
+                .map((f, i) => ({ ...f, sort_order: i }));
+            const res = await api('POST', 'admin/bitrix.php?action=field_config', { fields });
+            if (res.success) {
+                toast('Field configuration saved', 'success');
+                await loadBitrix24FieldConfig();
+            } else {
+                toast(res.error || 'Save failed', 'error');
+            }
+        }
+
         // ── View Switching ────────────────────────────────────
         function switchView(v) {
             view.value = v;
@@ -853,7 +971,7 @@ createApp({
             }
             if (v === 'departments') { loadDepartments(); if (!agents.value.length) loadAgents(); }
             if (v === 'canned')      loadCanned();
-            if (v === 'settings')    { loadSettings(); loadWaAccounts(); }
+            if (v === 'settings')    { loadSettings(); loadWaAccounts(); loadBitrix24Settings(); }
             if (v === 'analytics')   loadAnalytics();
         }
 
@@ -1046,6 +1164,13 @@ createApp({
             // New WA conversation
             waNewModal, waNewPhone, waNewMsg, waNewAccountId, startWaConv,
             waWindowExpired,
+            // Contact edit
+            contactEditForm, contactEditLoading, saveContactDetails, historyOpen,
+            // Bitrix24
+            bitrix24Data, bitrix24Fields, bitrix24Enabled, bitrix24SyncedAt, bitrix24Loading,
+            bitrix24Settings, bitrix24AvailableFields, bitrix24FieldConfig, bitrix24FieldsLoading,
+            refreshBitrix24, loadBitrix24Settings, saveBitrix24Credentials,
+            loadBitrix24Fields, loadBitrix24FieldConfig, saveBitrix24FieldConfig,
             // Access / view / filter / take
             canAccess, canReply, takeConversation,
             rankLabel, rankIcon, roleDescription, switchView, setFilter,
