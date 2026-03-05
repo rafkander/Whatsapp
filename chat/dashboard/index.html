@@ -1096,39 +1096,41 @@
                         <div class="f-group">
                             <label class="f-label">Webhook URL</label>
                             <input class="f-input" type="text" v-model="bitrix24Settings.webhook_url" placeholder="https://your-domain.bitrix24.com/rest/1/xxxxx/">
-                            <div class="f-hint">Paste your Bitrix24 REST webhook URL. It must have CRM contact read permissions.</div>
+                            <div class="f-hint">Paste your Bitrix24 REST webhook URL. The webhook user must have CRM read permissions including Smart Process (SPA) access for entity types 148 (CLIs) and 156 (Sites).</div>
                         </div>
-                        <div style="display:flex;gap:10px;margin-bottom:20px">
+                        <div style="margin-bottom:20px">
                             <button class="btn btn-primary" @click="saveBitrix24Credentials">Save Credentials</button>
-                            <button class="btn" @click="loadBitrix24Fields" :disabled="bitrix24FieldsLoading">
-                                {{ bitrix24FieldsLoading ? 'Loading…' : 'Load Fields from Bitrix24' }}
-                            </button>
                         </div>
 
                         <!-- Field configuration table -->
-                        <div v-if="bitrix24AvailableFields.length || bitrix24FieldConfig.length">
+                        <div v-if="bitrix24FieldConfig.length">
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-                                <div class="f-label" style="margin-bottom:0">CRM Fields to Display in Sidebar</div>
-                                <button class="btn btn-primary btn-sm" @click="saveBitrix24FieldConfig" style="font-size:.75rem;padding:4px 12px">Save Field Config</button>
+                                <div>
+                                    <div class="f-label" style="margin-bottom:2px">Sidebar Fields</div>
+                                    <div class="f-hint" style="margin:0">Data is pulled from the CLI record (type 148), its parent Site (type 156), and the linked Company. Toggle fields on/off and rename labels below.</div>
+                                </div>
+                                <button class="btn btn-primary btn-sm" @click="saveBitrix24FieldConfig" style="font-size:.75rem;padding:4px 12px">Save</button>
                             </div>
-                            <div style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
+                            <div style="max-height:380px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
                                 <table class="data-table" style="font-size:.8rem">
-                                    <thead><tr><th style="width:36px">Show</th><th>Field Key</th><th>Label (editable)</th><th>Type</th></tr></thead>
+                                    <thead><tr><th style="width:36px">Show</th><th>Source</th><th>Label (editable)</th></tr></thead>
                                     <tbody>
-                                        <tr v-for="field in (bitrix24AvailableFields.length ? bitrix24AvailableFields : bitrix24FieldConfig)" :key="field.field_key">
+                                        <tr v-for="field in bitrix24FieldConfig" :key="field.field_key">
                                             <td style="text-align:center">
-                                                <input type="checkbox" v-model="field.is_enabled" :true-value="true" :false-value="false" style="width:15px;height:15px;cursor:pointer">
+                                                <input type="checkbox" v-model="field.is_enabled" :true-value="1" :false-value="0" style="width:15px;height:15px;cursor:pointer">
                                             </td>
-                                            <td><code style="font-size:.72rem">{{ field.field_key }}</code></td>
+                                            <td style="color:var(--text-3);font-size:.72rem">
+                                                <span v-if="field.field_key.startsWith('_')">hoisted</span>
+                                                <span v-else-if="field.field_key.startsWith('ufCrm45')">site</span>
+                                                <span v-else-if="field.field_key.startsWith('ufCrm47')">cli</span>
+                                                <span v-else-if="field.field_key === 'title'">site</span>
+                                                <span v-else>—</span>
+                                            </td>
                                             <td><input class="f-input" style="padding:3px 6px;font-size:.78rem;margin:0" v-model="field.label"></td>
-                                            <td style="color:var(--text-3)">{{ field.field_type }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
-                        <div v-else style="color:var(--text-3);font-size:.82rem;text-align:center;padding:14px;border:1px dashed var(--border);border-radius:8px">
-                            Click <strong>Load Fields from Bitrix24</strong> to see available CRM fields.
                         </div>
                     </div>
                 </div>
