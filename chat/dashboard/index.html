@@ -75,6 +75,14 @@
                 </svg>
             </button>
 
+            <!-- Notification Preferences -->
+            <button class="icon-btn" :class="{active: view==='notifications'}"
+                    @click="switchView('notifications')" v-if="canAccess('agent')" title="Notification Preferences">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                </svg>
+            </button>
+
             <div class="icon-sep" v-if="canAccess('admin')"></div>
 
             <!-- Agents -->
@@ -1175,6 +1183,136 @@
                 </div>
 
                 <button class="btn btn-primary" @click="saveSettings">💾 Save All Changes</button>
+            </div>
+        </template>
+
+        <!-- ════════ NOTIFICATIONS VIEW ════════ -->
+        <template v-if="view==='notifications'">
+            <div class="admin-wrap">
+                <div class="page-header">
+                    <div>
+                        <div class="page-title">Notification Preferences</div>
+                        <div class="page-sub">Choose how and when you get alerted</div>
+                    </div>
+                    <button class="btn btn-primary" @click="saveNotifPrefs">💾 Save Preferences</button>
+                </div>
+
+                <!-- In-App Notifications -->
+                <div class="card settings-section">
+                    <div class="card-hd">🔔 In-App Notifications</div>
+                    <div style="padding:20px">
+                        <div class="agent-toggle-list">
+                            <div class="agent-toggle-row">
+                                <div style="flex:1">
+                                    <div class="agent-toggle-name">Sound Alerts</div>
+                                    <div class="agent-toggle-role">Play a chime when new messages or conversations arrive</div>
+                                </div>
+                                <button class="btn btn-ghost btn-sm" @click="playSound()" style="margin-right:10px">▶ Test</button>
+                                <label class="toggle">
+                                    <input type="checkbox" v-model="notifPrefs.sound">
+                                    <span class="toggle-track"></span>
+                                </label>
+                            </div>
+                            <div class="agent-toggle-row">
+                                <div style="flex:1">
+                                    <div class="agent-toggle-name">New Conversation Toasts</div>
+                                    <div class="agent-toggle-role">Show a pop-up banner when a new conversation comes in</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" v-model="notifPrefs.toast_new_conv">
+                                    <span class="toggle-track"></span>
+                                </label>
+                            </div>
+                            <div class="agent-toggle-row">
+                                <div style="flex:1">
+                                    <div class="agent-toggle-name">Assignment Toasts</div>
+                                    <div class="agent-toggle-role">Show a pop-up banner when a conversation is assigned to you</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" v-model="notifPrefs.toast_assigned">
+                                    <span class="toggle-track"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Browser / Desktop Notifications -->
+                <div class="card settings-section">
+                    <div class="card-hd">💻 Browser / Desktop Notifications</div>
+                    <div style="padding:20px">
+                        <div class="agent-toggle-list">
+                            <div class="agent-toggle-row">
+                                <div style="flex:1">
+                                    <div class="agent-toggle-name">Desktop Notifications</div>
+                                    <div class="agent-toggle-role">Show OS-level notifications even when this tab is in the background</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" v-model="notifPrefs.browser">
+                                    <span class="toggle-track"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div style="margin-top:14px;padding:12px 14px;border-radius:8px;background:var(--surface-2);display:flex;align-items:center;justify-content:space-between;gap:12px">
+                            <div>
+                                <div style="font-size:.82rem;font-weight:600;color:var(--text-2)">Permission Status</div>
+                                <div style="font-size:.78rem;margin-top:2px">
+                                    <template v-if="notifApiSupported">
+                                        <span v-if="notifPermission === 'granted'" style="color:#16a34a">✓ Granted — browser notifications are active</span>
+                                        <span v-else-if="notifPermission === 'denied'" style="color:#dc2626">✗ Blocked — enable notifications in your browser settings to use this feature</span>
+                                        <span v-else style="color:#d97706">⚠ Not yet granted — click the button to request permission</span>
+                                    </template>
+                                    <template v-else>
+                                        <span style="color:var(--text-muted)">Not supported by this browser</span>
+                                    </template>
+                                </div>
+                            </div>
+                            <button class="btn btn-ghost btn-sm" @click="requestBrowserPermission"
+                                    v-if="notifApiSupported && notifPermission !== 'granted'">
+                                Request Permission
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Email Notifications -->
+                <div class="card settings-section">
+                    <div class="card-hd">📧 Email Notifications</div>
+                    <div style="padding:20px">
+                        <div style="display:flex;align-items:flex-start;gap:14px;padding:16px;background:var(--surface-2);border-radius:10px;border:1px dashed var(--border)">
+                            <div style="font-size:1.6rem;line-height:1">📬</div>
+                            <div>
+                                <div style="font-weight:600;font-size:.9rem;margin-bottom:4px">Email alerts are configured system-wide</div>
+                                <div style="font-size:.82rem;color:var(--text-muted);line-height:1.5">
+                                    Email notifications (SMTP settings and notify addresses) are managed by your admin under
+                                    <strong>Settings → Email Notifications</strong>. Per-agent email preferences are coming soon.
+                                </div>
+                                <button class="btn btn-ghost btn-sm" style="margin-top:10px" @click="switchView('settings')" v-if="canAccess('admin')">
+                                    Open Email Settings →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teams Notifications -->
+                <div class="card settings-section">
+                    <div class="card-hd">🔵 Microsoft Teams Notifications</div>
+                    <div style="padding:20px">
+                        <div style="display:flex;align-items:flex-start;gap:14px;padding:16px;background:var(--surface-2);border-radius:10px;border:1px dashed var(--border)">
+                            <div style="font-size:1.6rem;line-height:1">🔵</div>
+                            <div>
+                                <div style="font-weight:600;font-size:.9rem;margin-bottom:4px">Microsoft Teams integration — coming soon</div>
+                                <div style="font-size:.82rem;color:var(--text-muted);line-height:1.5">
+                                    Teams notifications have not been set up yet. Once configured, you'll be able to receive alerts for new conversations and assignments directly in a Teams channel.
+                                </div>
+                                <span style="display:inline-block;margin-top:10px;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:3px 10px;border-radius:20px;background:var(--border);color:var(--text-muted)">Not configured</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" @click="saveNotifPrefs">💾 Save Preferences</button>
             </div>
         </template>
 

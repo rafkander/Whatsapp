@@ -98,6 +98,36 @@ createApp({
         let   prevMyUnread   = 0;
         const notifiedAssignIds = new Set();
 
+        // ── Notification preferences ──────────────────────────
+        const _savedPrefs = JSON.parse(localStorage.getItem('_notif_prefs') || '{}');
+        const notifPrefs = reactive({
+            sound:          _savedPrefs.sound          ?? true,
+            browser:        _savedPrefs.browser        ?? true,
+            toast_new_conv: _savedPrefs.toast_new_conv ?? true,
+            toast_assigned: _savedPrefs.toast_assigned ?? true,
+        });
+
+        function saveNotifPrefs() {
+            localStorage.setItem('_notif_prefs', JSON.stringify(notifPrefs));
+            if (notifPrefs.browser && 'Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+            toast('Preferences saved', 'success');
+        }
+
+        function requestBrowserPermission() {
+            if ('Notification' in window) {
+                Notification.requestPermission().then(p => {
+                    notifPermission.value = p;
+                    if (p === 'granted') toast('Browser notifications enabled', 'success');
+                    else toast('Browser notifications blocked', 'error');
+                });
+            }
+        }
+
+        const notifApiSupported = 'Notification' in window;
+        const notifPermission   = ref(notifApiSupported ? Notification.permission : 'denied');
+
         const departments = ref([]);
         const activeDepts = computed(() => departments.value.filter(d => d.is_active == 1));
         const agents      = ref([]);
@@ -220,8 +250,8 @@ createApp({
             msgs.forEach(msg => {
                 // Only notify for visitor messages — skip agent, system, bot, note
                 if (msg.sender_type === 'visitor') {
-                    playSound();
-                    if (Notification.permission === 'granted') {
+                    if (notifPrefs.sound) playSound();
+                    if (notifPrefs.browser && Notification.permission === 'granted') {
                         const name = activeConv.value?.contact_name || 'Visitor';
                         new Notification(`New message from ${name}`, { body: msg.content || 'New message' });
                     }
@@ -269,9 +299,9 @@ createApp({
                 const newMax = Math.max(...res.new_conversations.map(c => c.id));
                 if (!silent && newMax > lastConvId.value) {
                     res.new_conversations.forEach(c => {
-                        toast(`New ${c.channel === 'whatsapp' ? '📱 WhatsApp' : '💬 Chat'} from ${c.contact_name || 'Visitor'}`, 'info');
-                        playSound();
-                        if (Notification.permission === 'granted') {
+                        if (notifPrefs.toast_new_conv) toast(`New ${c.channel === 'whatsapp' ? '📱 WhatsApp' : '💬 Chat'} from ${c.contact_name || 'Visitor'}`, 'info');
+                        if (notifPrefs.sound) playSound();
+                        if (notifPrefs.browser && Notification.permission === 'granted') {
                             new Notification('New Conversation', { body: `${c.contact_name || 'Visitor'} started a conversation` });
                         }
                     });
@@ -286,9 +316,9 @@ createApp({
                 res.assigned_to_me.forEach(c => {
                     if (!notifiedAssignIds.has(c.id)) {
                         notifiedAssignIds.add(c.id);
-                        toast(`📋 Assigned to you: ${c.contact_name || 'Visitor'}`, 'info');
-                        playSound();
-                        if (Notification.permission === 'granted') {
+                        if (notifPrefs.toast_assigned) toast(`📋 Assigned to you: ${c.contact_name || 'Visitor'}`, 'info');
+                        if (notifPrefs.sound) playSound();
+                        if (notifPrefs.browser && Notification.permission === 'granted') {
                             new Notification('Conversation Assigned', { body: `${c.contact_name || 'Visitor'} has been assigned to you` });
                         }
                     }
@@ -298,7 +328,7 @@ createApp({
             // ── New messages in my conversations (unread increase) ─
             if (!silent && res.my_unread > prevMyUnread && res.my_unread > 0) {
                 // Sound already plays via notifyNewMsg for active conv; only play for background convs
-                if (!activeConvId.value) playSound();
+                if (!activeConvId.value && notifPrefs.sound) playSound();
             }
             prevMyUnread = res.my_unread;
         }
@@ -1185,15 +1215,46 @@ createApp({
             return Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
         }
 
-        function playSound() {
+        let _audioCtx = null;
+
+        // Unlock AudioContext on first user interaction so polling-triggered sounds work
+        function _unlockAudio() {
+            if (!_audioCtx) {
+                _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (_audioCtx.state === 'suspended') _audioCtx.resume();
+        }
+        document.addEventListener('click',   _unlockAudio, { once: true });
+        document.addEventListener('keydown',  _unlockAudio, { once: true });
+
+        async function playSound() {
             try {
-                const ctx  = new (window.AudioContext || window.webkitAudioContext)();
-                const osc  = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain); gain.connect(ctx.destination);
-                osc.frequency.value = 880; gain.gain.value = 0.06;
-                osc.start(); osc.stop(ctx.currentTime + 0.12);
-            } catch (_) {}
+                if (!_audioCtx) {
+                    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (_audioCtx.state === 'suspended') {
+                    await _audioCtx.resume();
+                }
+                const ctx = _audioCtx;
+                const now = ctx.currentTime;
+
+                // Two-tone notification chime
+                [[660, 0, 0.18], [880, 0.16, 0.22]].forEach(([freq, start, end]) => {
+                    const osc  = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0, now + start);
+                    gain.gain.linearRampToValueAtTime(0.4, now + start + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + end);
+                    osc.start(now + start);
+                    osc.stop(now + end);
+                });
+            } catch (e) {
+                console.warn('playSound failed:', e);
+            }
         }
 
         // ── API ───────────────────────────────────────────────
@@ -1242,8 +1303,8 @@ createApp({
             startPolling();
 
             // Browser notification permission
-            if ('Notification' in window && Notification.permission === 'default') {
-                Notification.requestPermission();
+            if (notifApiSupported && Notification.permission === 'default') {
+                Notification.requestPermission().then(p => { notifPermission.value = p; });
             }
         }
 
@@ -1303,6 +1364,8 @@ createApp({
             bitrix24Settings, bitrix24AvailableFields, bitrix24FieldConfig, bitrix24FieldsLoading,
             refreshBitrix24, loadBitrix24Settings, saveBitrix24Credentials,
             loadBitrix24Fields, loadBitrix24FieldConfig, saveBitrix24FieldConfig,
+            // Notification preferences
+            notifPrefs, saveNotifPrefs, requestBrowserPermission, notifApiSupported, notifPermission, playSound,
             // Access / view / filter / take
             canAccess, canReply, takeConversation,
             rankLabel, rankIcon, roleDescription, switchView, setFilter,

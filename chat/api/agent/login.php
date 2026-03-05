@@ -26,7 +26,7 @@ $stmt->execute([$email]);
 $agent = $stmt->fetch();
 
 if (!$agent || !password_verify($pass, $agent['password_hash'])) {
-    json_error('Invalid credentials', 401);
+    json_error('Invalid credentials', 400);
 }
 
 // Mark agent online
