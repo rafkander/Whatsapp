@@ -477,38 +477,82 @@ function any_agent_online(): bool {
 // ── Bitrix24 CRM Integration ──────────────────────────────────
 function bitrix24_lookup(?string $phone, ?string $email): ?array {
     $webhookUrl = get_setting('bitrix24_webhook_url');
-    if (!$webhookUrl || (!$phone && !$email)) return null;
+    if (!$webhookUrl || !$phone) return null;
 
-    $contact = null;
+    $phoneField = _b24_item_phone_field($webhookUrl);
+    if (!$phoneField) return null;
 
-    // Try phone in multiple formats (Bitrix24 stores numbers with/without + and country code variants)
-    if ($phone) {
-        $digits = preg_replace('/\D/', '', $phone);
-        $candidates = array_unique(array_filter([
-            $digits,                              // 447385297011
-            '+' . $digits,                        // +447385297011
-            preg_replace('/^44/', '0', $digits),  // 07385297011  (UK local)
-        ]));
-        foreach ($candidates as $candidate) {
-            $contact = _b24_contact_list($webhookUrl, 'PHONE', $candidate);
-            if ($contact) break;
+    $digits = preg_replace('/\D/', '', $phone);
+    $candidates = array_unique(array_filter([
+        $digits,                              // 447385297011
+        '+' . $digits,                        // +447385297011
+        preg_replace('/^44/', '0', $digits),  // 07385297011  (UK local)
+    ]));
+
+    $cli = null;
+    foreach ($candidates as $candidate) {
+        $cli = _b24_item_list($webhookUrl, $phoneField, $candidate);
+        if ($cli) break;
+    }
+
+    if (!$cli) return null;
+
+    // Fetch parent Site record (entity type 156)
+    $siteId = $cli['parentId156'] ?? $cli['PARENT_ID_156'] ?? null;
+    if ($siteId) {
+        $site = _b24_item_get($webhookUrl, 156, $siteId);
+        if ($site) {
+            $site['_username'] = $cli['ufCrm47UserName'] ?? null;
+
+            // Find newest CLI for this site to get most recent start/end dates
+            $allClisRes = _b24_post($webhookUrl . 'crm.item.list', [
+                'entityTypeId' => 148,
+                'filter'       => ['parentId156' => $siteId],
+                'select'       => ['id', 'ufCrm47StartDate', 'ufCrm47EndDate'],
+            ]);
+            _b24_log("ALL_CLIS siteId=$siteId response=" . json_encode($allClisRes));
+            $allClis = $allClisRes['result']['items'] ?? [];
+            usort($allClis, fn($a, $b) =>
+                strtotime($b['ufCrm47StartDate'] ?? '') - strtotime($a['ufCrm47StartDate'] ?? '')
+            );
+            $newestCli = $allClis[0] ?? $cli;
+            $site['_contractStart'] = $newestCli['ufCrm47StartDate'] ?? null;
+            $site['_contractEnd']   = $newestCli['ufCrm47EndDate']   ?? null;
+
+            // Fetch linked contact for email
+            $contactRes = _b24_post($webhookUrl . 'crm.contact.list', [
+                'filter' => ['PARENT_ID_156' => $siteId],
+                'select' => ['EMAIL'],
+            ]);
+            $contacts = $contactRes['result'] ?? [];
+            if (!empty($contacts)) {
+                $emailArr = $contacts[0]['EMAIL'] ?? [];
+                $site['_email'] = $emailArr[0]['VALUE'] ?? null;
+            }
+
+            // Fetch company for account managers, gold status, security Q&A
+            $companyId = $site['companyId'] ?? null;
+            if ($companyId) {
+                $companyRes = _b24_post($webhookUrl . 'crm.company.get', ['id' => $companyId]);
+                _b24_log("COMPANY_GET id=$companyId response=" . json_encode($companyRes));
+                $company = $companyRes['result'] ?? null;
+                if ($company) {
+                    $site['_companyName']        = $company['TITLE']                                ?? null;
+                    $site['_accountManager']     = $company['UF_CRM_1765386517']                   ?: null;
+                    $site['_uccAccountManager']  = $company['UF_COMPANY_ABILL_UCC_ACC_MANAGER']    ?: null;
+                    $site['_mobileAccManager']   = $company['UF_COMPANY_ABILL_MOBILE_ACC_MANAGER'] ?: null;
+                    $site['_gold']               = ($company['UF_CRM_1765388262'] && $company['UF_CRM_1765388262'] !== '0') ? 'Yes' : 'No';
+                    $site['_securityQ']          = $company['UF_COMPANY_ABILL_SEC_Q']              ?: null;
+                    $site['_securityA']          = $company['UF_COMPANY_ABILL_SEC_A']              ?: null;
+                }
+            }
+
+            return $site;
         }
     }
 
-    // Fallback to email
-    if (!$contact && $email) {
-        $contact = _b24_contact_list($webhookUrl, 'EMAIL', $email);
-    }
-
-    if (!$contact) return null;
-
-    // Fetch company if linked
-    if (!empty($contact['COMPANY_ID'])) {
-        $company = _b24_company_get($webhookUrl, $contact['COMPANY_ID']);
-        if ($company) $contact['_company'] = $company;
-    }
-
-    return $contact;
+    // No site linked — return CLI record as-is
+    return $cli;
 }
 
 function bitrix24_cache_contact(int $contactId, ?array $result): void {
@@ -521,27 +565,50 @@ function bitrix24_cache_contact(int $contactId, ?array $result): void {
 function bitrix24_get_fields(): ?array {
     $webhookUrl = get_setting('bitrix24_webhook_url');
     if (!$webhookUrl) return null;
-    $res = _b24_post($webhookUrl . 'crm.contact.fields', []);
-    return $res['result'] ?? null;
+    $res = _b24_post($webhookUrl . 'crm.item.fields', ['entityTypeId' => 148]);
+    return $res['result']['fields'] ?? null;
 }
 
-function _b24_contact_list(string $webhookUrl, string $type, string $value): ?array {
-    $filterKey = ($type === 'PHONE') ? 'PHONE' : 'EMAIL';
+function _b24_item_phone_field(string $webhookUrl): ?string {
+    $res = _b24_post($webhookUrl . 'crm.item.fields', ['entityTypeId' => 148]);
+    _b24_log("ITEM_FIELDS response=" . json_encode($res));
+    $fields = $res['result']['fields'] ?? [];
+    foreach ($fields as $key => $meta) {
+        $type       = strtolower($meta['type'] ?? '');
+        $title      = strtolower($meta['title'] ?? '');
+        $upperName  = strtoupper($meta['upperName'] ?? $key);
+        if (
+            $type === 'phone' ||
+            stripos($key, 'phone') !== false ||
+            stripos($upperName, 'PHONE') !== false ||
+            $title === 'cli' ||
+            stripos($upperName, '_CLI') !== false
+        ) {
+            return $key;
+        }
+    }
+    return null;
+}
+
+function _b24_item_get(string $webhookUrl, int $entityTypeId, $id): ?array {
+    $res = _b24_post($webhookUrl . 'crm.item.get', ['entityTypeId' => $entityTypeId, 'id' => $id]);
+    _b24_log("ITEM_GET entityTypeId=$entityTypeId id=$id response=" . json_encode($res));
+    return $res['result']['item'] ?? null;
+}
+
+function _b24_item_list(string $webhookUrl, string $phoneField, string $phone): ?array {
     $payload = [
-        'filter' => [$filterKey => $value],
-        'select' => ['ID', 'NAME', 'LAST_NAME', 'SECOND_NAME', 'PHONE', 'EMAIL',
-                     'COMPANY_ID', 'COMPANY_TITLE', 'POST', 'COMMENTS'],
+        'entityTypeId' => 148,
+        'filter' => [$phoneField => $phone],
+        'select' => ['*'],
     ];
-    $res = _b24_post($webhookUrl . 'crm.contact.list', $payload);
-    _b24_log("LIST type=$type value=$value response=" . json_encode($res));
+    $res = _b24_post($webhookUrl . 'crm.item.list', $payload);
+    _b24_log("ITEM_LIST field=$phoneField value=$phone response=" . json_encode($res));
     if (isset($res['error'])) throw new \RuntimeException('Bitrix24 API error: ' . ($res['error_description'] ?? $res['error']));
-    $items = $res['result'] ?? [];
+    $items = $res['result']['items'] ?? [];
     if (empty($items)) return null;
-    $id = $items[0]['ID'];
-    // Fetch full record
-    $full = _b24_post($webhookUrl . 'crm.contact.get', ['id' => $id]);
-    _b24_log("GET id=$id response=" . json_encode($full));
-    return $full['result'] ?? $items[0];
+    $id = $items[0]['id'] ?? $items[0]['ID'];
+    return _b24_item_get($webhookUrl, 148, $id) ?? $items[0];
 }
 
 function _b24_log(string $msg): void {
