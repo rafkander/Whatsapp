@@ -441,7 +441,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="closed-notice" v-else>
+                        <div class="closed-notice" v-else-if="activeConv?.status==='closed'">
                             <span>Conversation closed
                                 <template v-if="activeConv?.rating"> · Rated {{ '⭐'.repeat(activeConv.rating) }}</template>
                             </span>

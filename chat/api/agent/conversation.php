@@ -92,7 +92,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         }
         $updates[] = 'status = ?';
         $params[]  = $newStatus;
-        $sysMsg    = $newStatus === 'closed' ? 'Conversation closed by agent' : 'Conversation reopened';
+        if ($newStatus === 'open') {
+            $updates[] = 'dept_id = ?';
+            $params[]  = null;
+            $updates[] = 'assigned_agent_id = ?';
+            $params[]  = null;
+        }
+        $sysMsg    = $newStatus === 'closed' ? "Conversation closed by {$agent['name']}" : "Conversation reopened by {$agent['name']}";
         $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', ?, 'system')")->execute([$convId, $sysMsg]);
     }
 

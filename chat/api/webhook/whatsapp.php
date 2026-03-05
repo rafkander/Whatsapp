@@ -187,7 +187,7 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts, ?array
         $isNew  = true;
     } elseif ($conv['status'] === 'closed') {
         $convId = (int)$conv['id'];
-        $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, bot_state = NULL, bot_data = NULL, wa_account_id = COALESCE(wa_account_id, ?), unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
+        $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, dept_id = NULL, bot_state = NULL, bot_data = NULL, wa_account_id = COALESCE(wa_account_id, ?), unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
             ->execute([$waAccountId, $convId]);
         $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened by contact', 'system')")
             ->execute([$convId]);
