@@ -559,7 +559,7 @@
                                                 {{ item.VALUE || item }}
                                             </div>
                                         </template>
-                                        <template v-else>{{ bitrix24Data[field.field_key] }}</template>
+                                        <template v-else>{{ field.field_type === 'datetime' ? formatDate(bitrix24Data[field.field_key]) : bitrix24Data[field.field_key] }}</template>
                                     </div>
                                 </div>
                                 </template>
