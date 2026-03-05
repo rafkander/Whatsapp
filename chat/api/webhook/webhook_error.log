@@ -45,3 +45,12 @@
 [05-Mar-2026 11:40:32 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 276
 [05-Mar-2026 11:40:51 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 276
 [05-Mar-2026 11:42:46 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 276
+[05-Mar-2026 14:49:22 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 276
+[05-Mar-2026 14:51:19 UTC] PHP Warning:  Undefined array key "QUERY_STRING" in /Users/RealAcc/Projects/Whatsapp/chat/api/webhook/whatsapp.php on line 28
+[05-Mar-2026 14:51:21 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in /Users/RealAcc/Projects/Whatsapp/chat/api/helpers.php on line 276
+[05-Mar-2026 14:51:24 UTC] PHP Warning:  Undefined array key "QUERY_STRING" in /Users/RealAcc/Projects/Whatsapp/chat/api/webhook/whatsapp.php on line 28
+[05-Mar-2026 14:51:24 UTC] PHP Warning:  Undefined array key "QUERY_STRING" in /Users/RealAcc/Projects/Whatsapp/chat/api/webhook/whatsapp.php on line 28
+[05-Mar-2026 14:51:24 UTC] PHP Warning:  Undefined array key "QUERY_STRING" in /Users/RealAcc/Projects/Whatsapp/chat/api/webhook/whatsapp.php on line 28
+[05-Mar-2026 14:51:25 UTC] PHP Warning:  Undefined array key "QUERY_STRING" in /Users/RealAcc/Projects/Whatsapp/chat/api/webhook/whatsapp.php on line 28
+[05-Mar-2026 14:51:25 UTC] PHP Warning:  Undefined array key "QUERY_STRING" in /Users/RealAcc/Projects/Whatsapp/chat/api/webhook/whatsapp.php on line 28
+[05-Mar-2026 14:51:25 UTC] PHP Warning:  Undefined array key "QUERY_STRING" in /Users/RealAcc/Projects/Whatsapp/chat/api/webhook/whatsapp.php on line 28

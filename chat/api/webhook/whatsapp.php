@@ -21,6 +21,16 @@ set_exception_handler(function (Throwable $e) {
 require_once dirname(__DIR__, 2) . '/config.php';
 require_once dirname(__DIR__) . '/helpers.php';
 
+// ── Raw request log (debug) ───────────────────────────────────
+$_rawLog = __DIR__ . '/webhook_requests.log';
+$_logLine = '[' . date('Y-m-d H:i:s') . '] '
+    . $_SERVER['REQUEST_METHOD'] . ' '
+    . ($_SERVER['QUERY_STRING'] ? '?' . $_SERVER['QUERY_STRING'] : '')
+    . ' body=' . substr(file_get_contents('php://input'), 0, 300)
+    . PHP_EOL;
+file_put_contents($_rawLog, $_logLine, FILE_APPEND | LOCK_EX);
+unset($_rawLog, $_logLine);
+
 header('Content-Type: application/json');
 
 $pdo = db();
