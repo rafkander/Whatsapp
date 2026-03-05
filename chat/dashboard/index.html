@@ -93,6 +93,14 @@
                 </svg>
             </button>
 
+            <!-- Roles -->
+            <button class="icon-btn" :class="{active: view==='roles'}"
+                    @click="switchView('roles')" v-if="canAccess('admin')" title="Roles &amp; Permissions">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                </svg>
+            </button>
+
             <!-- Analytics -->
             <button class="icon-btn" :class="{active: view==='analytics'}"
                     @click="switchView('analytics')" v-if="canAccess('supervisor')" title="Analytics">
@@ -779,6 +787,106 @@
             </div>
         </template>
 
+        <!-- ════════ ROLES ════════ -->
+        <template v-if="view==='roles'">
+            <div class="admin-wrap">
+                <div class="page-header">
+                    <div>
+                        <div class="page-title">Roles &amp; Permissions</div>
+                        <div class="page-sub">Define what each role can access — assign roles to agents on the Agents page</div>
+                    </div>
+                    <button class="btn btn-primary" @click="newRole()">+ New Role</button>
+                </div>
+
+                <div class="dept-manager">
+                    <!-- Left panel: role list -->
+                    <div class="dept-list-panel">
+                        <div class="dept-list-scroll">
+                            <div v-for="r in rolesList" :key="r.id"
+                                 class="dept-list-item"
+                                 :class="{active: selectedRole?.id === r.id}"
+                                 @click="selectRole(r)">
+                                <span class="dept-dot" :style="{background: r.color}"></span>
+                                <div class="dept-list-info">
+                                    <div class="dept-list-name">{{ r.name }}</div>
+                                    <div class="dept-list-count">
+                                        {{ r.permissions?.length || 0 }} permission{{ r.permissions?.length !== 1 ? 's' : '' }}
+                                        <span v-if="r.is_system" style="margin-left:4px;font-size:.65rem;background:var(--border);border-radius:3px;padding:1px 5px;color:var(--text-muted)">built-in</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-if="!rolesList.length" style="padding:32px 20px;text-align:center;color:var(--text-muted);font-size:.84rem">
+                                No roles yet
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right panel: selected role -->
+                    <div class="dept-edit-panel" v-if="selectedRole">
+                        <div class="dept-edit-hd">
+                            <div style="display:flex;align-items:center;gap:10px">
+                                <span class="dept-dot" :style="{background: selectedRole.color}"></span>
+                                <div class="dept-edit-title">{{ selectedRole.name }}</div>
+                                <span v-if="selectedRole.is_system" style="font-size:.65rem;background:var(--border);border-radius:3px;padding:2px 7px;color:var(--text-muted)">built-in</span>
+                            </div>
+                            <button class="btn btn-danger-ghost btn-sm" @click="deleteRole(selectedRole.id)" v-if="!selectedRole.is_system">Remove</button>
+                        </div>
+                        <div class="dept-edit-body">
+                            <!-- Details -->
+                            <div class="dept-section">
+                                <div class="dept-section-title">Role Details</div>
+                                <div class="f-group">
+                                    <label class="f-label">Name</label>
+                                    <input class="f-input" v-model="roleForm.name" placeholder="e.g. Support Lead">
+                                </div>
+                                <div class="f-group">
+                                    <label class="f-label">Colour</label>
+                                    <div class="f-color-row">
+                                        <input type="color" class="f-color" v-model="roleForm.color">
+                                        <input class="f-input" style="width:140px;font-family:monospace" v-model="roleForm.color">
+                                    </div>
+                                </div>
+                                <div class="f-group">
+                                    <label class="f-label">Description <span style="color:var(--text-muted)">(optional)</span></label>
+                                    <input class="f-input" v-model="roleForm.description">
+                                </div>
+                                <button class="btn btn-primary" @click="saveRoleInline">Save Details</button>
+                            </div>
+
+                            <!-- Permissions -->
+                            <div class="dept-section">
+                                <div class="dept-section-title">Permissions</div>
+                                <div class="dept-section-sub">Toggle which actions agents with this role can perform.</div>
+                                <div v-for="(group, gName) in permissionGroups" :key="gName" style="margin-bottom:14px">
+                                    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:6px;padding-left:2px">{{ gName }}</div>
+                                    <div class="agent-toggle-list">
+                                        <div v-for="p in group" :key="p.key" class="agent-toggle-row">
+                                            <div style="flex:1;min-width:0">
+                                                <div class="agent-toggle-name">{{ p.label }}</div>
+                                                <div class="agent-toggle-role">{{ p.desc }}</div>
+                                            </div>
+                                            <label class="toggle">
+                                                <input type="checkbox" :checked="isPermEnabled(p.key)" @change="toggleRolePerm(p.key, $event.target.checked)">
+                                                <span class="toggle-track"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary" @click="saveRoleInline">Save Permissions</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right panel: empty state -->
+                    <div class="dept-edit-panel dept-edit-empty" v-else>
+                        <div style="font-size:2.5rem;margin-bottom:12px;opacity:.2">🔑</div>
+                        <div style="font-weight:600;color:var(--text-2);margin-bottom:6px">Select a role</div>
+                        <div style="font-size:.84rem;color:var(--text-muted)">Click a role on the left to view and edit its permissions</div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
         <!-- ════════ ANALYTICS ════════ -->
         <template v-if="view==='analytics'">
             <div class="admin-wrap">
@@ -1181,6 +1289,55 @@
             <div class="modal-ft">
                 <button class="btn btn-ghost" @click="showDeptModal=false">Cancel</button>
                 <button class="btn btn-primary" @click="saveDept">Save Department →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role modal -->
+    <div class="modal-overlay" v-if="showRoleModal" @click.self="showRoleModal=false">
+        <div class="modal" style="max-width:520px">
+            <div class="modal-hd">
+                <div class="modal-title">{{ editingRole ? 'Edit' : 'New' }} Role</div>
+                <button class="modal-close" @click="showRoleModal=false">✕</button>
+            </div>
+            <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+                <div class="f-group">
+                    <label class="f-label">Role Name</label>
+                    <input class="f-input" v-model="roleForm.name" placeholder="e.g. Support Lead">
+                </div>
+                <div class="f-group">
+                    <label class="f-label">Colour</label>
+                    <div class="f-color-row">
+                        <input type="color" class="f-color" v-model="roleForm.color">
+                        <input class="f-input" style="width:140px;font-family:monospace" v-model="roleForm.color">
+                    </div>
+                </div>
+                <div class="f-group">
+                    <label class="f-label">Description <span style="color:var(--text-muted)">(optional)</span></label>
+                    <input class="f-input" v-model="roleForm.description">
+                </div>
+                <div style="margin-top:16px">
+                    <div class="f-label" style="margin-bottom:10px;font-weight:600">Permissions</div>
+                    <div v-for="(group, gName) in permissionGroups" :key="gName" style="margin-bottom:12px">
+                        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:6px">{{ gName }}</div>
+                        <div class="agent-toggle-list">
+                            <div v-for="p in group" :key="p.key" class="agent-toggle-row">
+                                <div style="flex:1;min-width:0">
+                                    <div class="agent-toggle-name">{{ p.label }}</div>
+                                    <div class="agent-toggle-role">{{ p.desc }}</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" :checked="isPermEnabled(p.key)" @change="toggleRolePerm(p.key, $event.target.checked)">
+                                    <span class="toggle-track"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-ft">
+                <button class="btn btn-ghost" @click="showRoleModal=false">Cancel</button>
+                <button class="btn btn-primary" @click="saveRole">Save Role →</button>
             </div>
         </div>
     </div>

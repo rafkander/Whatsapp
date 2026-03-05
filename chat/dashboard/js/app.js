@@ -16,6 +16,21 @@ const API_BASE = (() => {
     return loc.origin + parts.join('/');
 })();
 
+// ── Permissions catalogue ──────────────────────────────────
+const ALL_PERMISSIONS = [
+    { key: 'view_all_conversations', label: 'View All Conversations', group: 'Conversations',  desc: 'See all conversations, not just assigned ones' },
+    { key: 'reply_conversations',    label: 'Reply to Conversations', group: 'Conversations',  desc: 'Send messages to visitors' },
+    { key: 'take_conversations',     label: 'Take Conversations',     group: 'Conversations',  desc: 'Assign conversations to themselves' },
+    { key: 'assign_conversations',   label: 'Assign Conversations',   group: 'Conversations',  desc: 'Reassign conversations to other agents or departments' },
+    { key: 'close_conversations',    label: 'Close / Reopen',         group: 'Conversations',  desc: 'Close and reopen conversations' },
+    { key: 'view_analytics',         label: 'View Analytics',         group: 'Reporting',      desc: 'Access the analytics dashboard' },
+    { key: 'manage_canned',          label: 'Manage Canned Responses',group: 'Content',        desc: 'Create, edit and delete canned responses' },
+    { key: 'manage_agents',          label: 'Manage Agents',          group: 'Administration', desc: 'Invite, edit and remove team members' },
+    { key: 'manage_departments',     label: 'Manage Departments',     group: 'Administration', desc: 'Create and configure departments' },
+    { key: 'manage_roles',           label: 'Manage Roles',           group: 'Administration', desc: 'Create and configure roles and permissions' },
+    { key: 'manage_settings',        label: 'Manage Settings',        group: 'Administration', desc: 'Access system settings and integrations' },
+];
+
 createApp({
     setup() {
         // ── Auth ─────────────────────────────────────────────
@@ -637,6 +652,119 @@ createApp({
             await loadDepartments();
         }
 
+        // ── Roles (admin) ────────────────────────────────────
+        const rolesList      = ref([]);
+        const showRoleModal  = ref(false);
+        const editingRole    = ref(null);
+        const selectedRole   = ref(null);
+        const roleForm       = reactive({ name: '', description: '', color: '#2563eb', permissions: [] });
+
+        const permissionGroups = computed(() => {
+            const groups = {};
+            for (const p of ALL_PERMISSIONS) {
+                if (!groups[p.group]) groups[p.group] = [];
+                groups[p.group].push(p);
+            }
+            return groups;
+        });
+
+        async function loadRoles() {
+            const res = await api('GET', 'admin/roles.php');
+            if (res.success) {
+                rolesList.value = res.roles;
+                if (selectedRole.value) {
+                    selectedRole.value = res.roles.find(r => r.id === selectedRole.value.id) || null;
+                    if (selectedRole.value) {
+                        Object.assign(roleForm, {
+                            name: selectedRole.value.name,
+                            description: selectedRole.value.description || '',
+                            color: selectedRole.value.color,
+                            permissions: [...(selectedRole.value.permissions || [])],
+                        });
+                    }
+                }
+            }
+        }
+
+        function selectRole(r) {
+            selectedRole.value = r;
+            Object.assign(roleForm, {
+                name: r.name,
+                description: r.description || '',
+                color: r.color,
+                permissions: [...(r.permissions || [])],
+            });
+        }
+
+        function newRole() {
+            selectedRole.value = null;
+            editingRole.value  = null;
+            Object.assign(roleForm, { name: '', description: '', color: '#2563eb', permissions: [] });
+            showRoleModal.value = true;
+        }
+
+        function editRole(r) {
+            editingRole.value = r;
+            Object.assign(roleForm, {
+                name: r.name,
+                description: r.description || '',
+                color: r.color,
+                permissions: [...(r.permissions || [])],
+            });
+            showRoleModal.value = true;
+        }
+
+        async function saveRole() {
+            let res;
+            if (editingRole.value) {
+                res = await api('PATCH', `admin/roles.php?id=${editingRole.value.id}`, roleForm);
+            } else {
+                res = await api('POST', 'admin/roles.php', roleForm);
+            }
+            if (res.success) {
+                showRoleModal.value = false;
+                await loadRoles();
+                toast('Role saved', 'success');
+            } else {
+                toast(res.error || 'Failed to save role', 'error');
+            }
+        }
+
+        async function saveRoleInline() {
+            if (!selectedRole.value) return;
+            const res = await api('PATCH', `admin/roles.php?id=${selectedRole.value.id}`, roleForm);
+            if (res.success) {
+                await loadRoles();
+                toast('Saved', 'success');
+            } else {
+                toast(res.error || 'Failed to save', 'error');
+            }
+        }
+
+        async function deleteRole(id) {
+            if (!confirm('Delete this role? Agents currently assigned this role will not be changed.')) return;
+            const res = await api('DELETE', `admin/roles.php?id=${id}`);
+            if (res.success) {
+                if (selectedRole.value?.id === id) selectedRole.value = null;
+                await loadRoles();
+                toast('Removed', 'success');
+            } else {
+                toast(res.error || 'Cannot delete', 'error');
+            }
+        }
+
+        function isPermEnabled(key) {
+            return roleForm.permissions.includes(key);
+        }
+
+        function toggleRolePerm(key, checked) {
+            if (checked) {
+                if (!roleForm.permissions.includes(key)) roleForm.permissions.push(key);
+            } else {
+                roleForm.permissions = roleForm.permissions.filter(p => p !== key);
+            }
+        }
+
         // ── Settings (admin) ──────────────────────────────────
         const settings = reactive({});
 
@@ -970,6 +1098,7 @@ createApp({
                 agentsTimer = null;
             }
             if (v === 'departments') { loadDepartments(); if (!agents.value.length) loadAgents(); }
+            if (v === 'roles')       loadRoles();
             if (v === 'canned')      loadCanned();
             if (v === 'settings')    { loadSettings(); loadWaAccounts(); loadBitrix24Settings(); }
             if (v === 'analytics')   loadAnalytics();
@@ -1156,6 +1285,9 @@ createApp({
             agentList, showAgentModal, editingAgent, agentForm, loadAgents, editAgent, saveAgent, deleteAgent,
             showDeptModal, editingDept, deptForm, newDept, editDept, loadDepartments, saveDept, deleteDept,
             selectedDept, selectDept, saveDeptInline, isDeptMember, toggleDeptMember,
+            rolesList, showRoleModal, editingRole, selectedRole, roleForm, permissionGroups,
+            loadRoles, selectRole, newRole, editRole, saveRole, saveRoleInline, deleteRole,
+            isPermEnabled, toggleRolePerm, ALL_PERMISSIONS,
             settings, loadSettings, saveSettings, embedCode, embedCopied, copyEmbed,
             analytics, analyticsFrom, analyticsTo, loadAnalytics, barPct,
             // WhatsApp accounts management
