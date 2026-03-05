@@ -502,22 +502,9 @@ function bitrix24_lookup(?string $phone, ?string $email): ?array {
     if ($siteId) {
         $site = _b24_item_get($webhookUrl, 156, $siteId);
         if ($site) {
-            $site['_username'] = $cli['ufCrm47UserName'] ?? null;
-
-            // Find newest CLI for this site to get most recent start/end dates
-            $allClisRes = _b24_post($webhookUrl . 'crm.item.list', [
-                'entityTypeId' => 148,
-                'filter'       => ['parentId156' => $siteId],
-                'select'       => ['id', 'ufCrm47StartDate', 'ufCrm47EndDate'],
-            ]);
-            _b24_log("ALL_CLIS siteId=$siteId response=" . json_encode($allClisRes));
-            $allClis = $allClisRes['result']['items'] ?? [];
-            usort($allClis, fn($a, $b) =>
-                strtotime($b['ufCrm47StartDate'] ?? '') - strtotime($a['ufCrm47StartDate'] ?? '')
-            );
-            $newestCli = $allClis[0] ?? $cli;
-            $site['_contractStart'] = $newestCli['ufCrm47StartDate'] ?? null;
-            $site['_contractEnd']   = $newestCli['ufCrm47EndDate']   ?? null;
+            $site['_username']      = $cli['ufCrm47UserName']                                          ?? null;
+            $site['_contractStart'] = $cli['ufCrm47StartDate']                                        ?? null;
+            $site['_contractEnd']   = $cli['ufCrm47EndDate'] ?? $cli['ufCrm47ChargesEndDate'] ?? $cli['ufCrm47ContractEndDate'] ?? null;
 
             // Fetch linked contact for email
             $contactRes = _b24_post($webhookUrl . 'crm.contact.list', [
@@ -601,14 +588,23 @@ function _b24_item_list(string $webhookUrl, string $phoneField, string $phone): 
         'entityTypeId' => 148,
         'filter' => [$phoneField => $phone],
         'select' => ['*'],
+        'order'  => ['ufCrm47StartDate' => 'DESC'],
     ];
     $res = _b24_post($webhookUrl . 'crm.item.list', $payload);
     _b24_log("ITEM_LIST field=$phoneField value=$phone response=" . json_encode($res));
     if (isset($res['error'])) throw new \RuntimeException('Bitrix24 API error: ' . ($res['error_description'] ?? $res['error']));
     $items = $res['result']['items'] ?? [];
     if (empty($items)) return null;
-    $id = $items[0]['id'] ?? $items[0]['ID'];
-    return _b24_item_get($webhookUrl, 148, $id) ?? $items[0];
+
+    // Prefer a CLI that has a start date populated
+    $best = null;
+    foreach ($items as $item) {
+        if (!empty($item['ufCrm47StartDate'])) { $best = $item; break; }
+    }
+    $best = $best ?? $items[0];
+
+    $id = $best['id'] ?? $best['ID'];
+    return _b24_item_get($webhookUrl, 148, $id) ?? $best;
 }
 
 function _b24_log(string $msg): void {
