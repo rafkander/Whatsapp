@@ -191,6 +191,31 @@ CREATE TABLE IF NOT EXISTS `agent_sessions` (
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================================
+-- SMS Integration (Alfonica SMS API)
+-- ============================================================
+
+-- One shared Alfonica API token; sms_accounts are just sender IDs under that account
+CREATE TABLE IF NOT EXISTS `sms_accounts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `sender_id` varchar(20) NOT NULL COMMENT 'Phone number or alphanumeric sender ID (max 11 chars for alpha)',
+  `is_enabled` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `contacts`
+  ADD COLUMN `sms_number` varchar(30) DEFAULT NULL AFTER `whatsapp_number`;
+
+ALTER TABLE `conversations`
+  MODIFY `channel` enum('widget','whatsapp','sms') NOT NULL DEFAULT 'widget',
+  ADD COLUMN `sms_account_id` int(11) DEFAULT NULL AFTER `wa_account_id`,
+  ADD CONSTRAINT `fk_conv_sms_account` FOREIGN KEY (`sms_account_id`) REFERENCES `sms_accounts` (`id`) ON DELETE SET NULL;
+
+INSERT IGNORE INTO `settings` (`key`, `value`) VALUES ('sms_enabled', '0'), ('alfonica_sms_token', '');
+
+-- ============================================================
 -- Default Settings
 -- ============================================================
 INSERT IGNORE INTO `settings` (`key`, `value`) VALUES

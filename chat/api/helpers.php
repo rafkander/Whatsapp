@@ -273,7 +273,6 @@ function wa_send_text(string $to, string $text, ?array $creds = null): ?array {
     $res  = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err  = curl_error($ch);
-    curl_close($ch);
 
     if ($err) {
         wa_log("CURL ERROR to={$to}: {$err}");
@@ -297,7 +296,6 @@ function wa_download_media(string $mediaId, ?array $creds = null): ?string {
         CURLOPT_TIMEOUT        => 10,
     ]);
     $res = json_decode(curl_exec($ch), true);
-    curl_close($ch);
 
     if (empty($res['url'])) return null;
 
@@ -313,7 +311,6 @@ function wa_download_media(string $mediaId, ?array $creds = null): ?string {
     $raw      = curl_exec($ch);
     $hdrSize  = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
     $mimeType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-    curl_close($ch);
 
     $fileData = substr($raw, $hdrSize);
     if (!$fileData) return null;
@@ -430,6 +427,84 @@ function wa_send_media(string $to, string $type, string $url, ?string $caption =
         'type'  => $type,
         $type   => $media,
     ], $creds);
+}
+
+// ── Alfonica SMS API ──────────────────────────────────────────
+function sms_log(string $msg): void {
+    $logFile = dirname(__DIR__) . '/sms_send.log';
+    file_put_contents($logFile, '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL, FILE_APPEND | LOCK_EX);
+}
+
+/**
+ * Normalize a phone number to full international digits (no + or spaces).
+ * Handles UK local format: 07XXXXXXXXX → 447XXXXXXXXX
+ */
+function normalize_phone(string $phone): string {
+    $digits = preg_replace('/[^\d]/', '', $phone);
+    // UK local: 11 digits starting with 0  (e.g. 07385297011 → 447385297011)
+    if (strlen($digits) === 11 && $digits[0] === '0') {
+        $digits = '44' . substr($digits, 1);
+    }
+    // UK short: 10 digits starting with 7 (e.g. 7385297011 → 447385297011)
+    if (strlen($digits) === 10 && $digits[0] === '7') {
+        $digits = '44' . $digits;
+    }
+    return $digits;
+}
+
+function sms_creds_for_conv(PDO $pdo, int $convId): ?array {
+    $stmt = $pdo->prepare('
+        SELECT s.sender_id, s.name
+        FROM sms_accounts s
+        JOIN conversations c ON c.sms_account_id = s.id
+        WHERE c.id = ?
+    ');
+    $stmt->execute([$convId]);
+    return $stmt->fetch() ?: null;
+}
+
+function sms_send(string $to, string $message, ?array $creds = null): ?array {
+    $token    = get_setting('alfonica_sms_token');
+    $senderId = $creds['sender_id'] ?? null;
+
+    if (!$token || !$senderId) {
+        sms_log("SEND FAILED — missing credentials (token=" . ($token ? 'set' : 'EMPTY') . " sender_id=" . ($senderId ?: 'EMPTY') . ")");
+        return null;
+    }
+
+    $to = normalize_phone($to);
+
+    $url     = 'https://messenger.alfonica.com/api/v3/sms/send';
+    $payload = [
+        'recipient' => $to,
+        'sender_id' => $senderId,
+        'type'      => 'plain',
+        'message'   => $message,
+    ];
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($payload),
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            "Authorization: Bearer {$token}",
+        ],
+        CURLOPT_TIMEOUT        => 10,
+    ]);
+    $res  = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+
+    if ($err) {
+        sms_log("CURL ERROR to={$to}: {$err}");
+    } else {
+        sms_log("SEND to={$to} status={$code} response=" . $res);
+    }
+
+    return ['status' => $code, 'body' => json_decode($res, true)];
 }
 
 // ── User Agent Detection ──────────────────────────────────────

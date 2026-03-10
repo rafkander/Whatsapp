@@ -84,17 +84,19 @@ $sql = "
         c.id, c.channel, c.status, c.tags, c.rating, c.page_url,
         c.unread_agent, c.unread_visitor, c.created_at, c.updated_at,
         co.id AS contact_id, co.name AS contact_name, co.email AS contact_email,
-        co.whatsapp_number, co.browser, co.os, co.ip,
+        co.whatsapp_number, co.sms_number, co.browser, co.os, co.ip,
         d.id AS dept_id, d.name AS dept_name, d.color AS dept_color,
         a.id AS agent_id, a.name AS agent_name, a.avatar AS agent_avatar,
         m_last.content AS last_message, m_last.type AS last_message_type,
         m_last.sender_type AS last_sender_type, m_last.created_at AS last_message_at,
-        wa.id AS wa_account_id, wa.name AS wa_account_name
+        wa.id AS wa_account_id, wa.name AS wa_account_name,
+        sa.id AS sms_account_id, sa.name AS sms_account_name
     FROM conversations c
     JOIN contacts co ON co.id = c.contact_id
     LEFT JOIN departments d ON d.id = c.dept_id
     LEFT JOIN agents a ON a.id = c.assigned_agent_id
     LEFT JOIN wa_accounts wa ON wa.id = c.wa_account_id
+    LEFT JOIN sms_accounts sa ON sa.id = c.sms_account_id
     LEFT JOIN messages m_last ON m_last.id = (
         SELECT id FROM messages WHERE conversation_id = c.id AND type != 'note' ORDER BY id DESC LIMIT 1
     )

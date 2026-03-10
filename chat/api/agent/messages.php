@@ -83,8 +83,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Clear agent typing
         $pdo->prepare("DELETE FROM typing_status WHERE conversation_id = ? AND sender_type = 'agent'")->execute([$convId]);
 
-        // If WhatsApp conversation, send via WA API
+        // If WhatsApp or SMS conversation, send via the appropriate API
         $waWarning = null;
+        if ($conv['channel'] === 'sms') {
+            $stmt = $pdo->prepare('SELECT sms_number FROM contacts WHERE id = ?');
+            $stmt->execute([$conv['contact_id']]);
+            $contact = $stmt->fetch();
+
+            if ($contact && $contact['sms_number']) {
+                $smsCreds = sms_creds_for_conv($pdo, $convId);
+                $smsRes   = sms_send($contact['sms_number'], $content, $smsCreds);
+
+                if ($smsRes === null) {
+                    $waWarning = 'SMS credentials not configured. Message saved but not delivered.';
+                } elseif ($smsRes['status'] !== 200 && $smsRes['status'] !== 201) {
+                    $errMsg  = $smsRes['body']['message'] ?? ('HTTP ' . $smsRes['status']);
+                    $waWarning = "SMS delivery failed: {$errMsg}";
+                }
+            } else {
+                $waWarning = 'No SMS number on file for this contact.';
+            }
+        }
         if ($conv['channel'] === 'whatsapp') {
             $stmt = $pdo->prepare('SELECT whatsapp_number FROM contacts WHERE id = ?');
             $stmt->execute([$conv['contact_id']]);

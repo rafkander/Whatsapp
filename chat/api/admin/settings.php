@@ -26,6 +26,7 @@ $adminKeys = [
     'wa_phone_number_id', 'wa_access_token', 'wa_verify_token', 'wa_enabled',
     'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name',
     'email_notify_new_chat', 'email_notify_addresses',
+    'sms_enabled', 'alfonica_sms_token',
 ];
 
 if ($method === 'GET') {
@@ -44,6 +45,9 @@ if ($method === 'GET') {
     if (isset($all['smtp_pass']) && $all['smtp_pass']) {
         $all['smtp_pass'] = '••••••••';
     }
+    if (isset($all['alfonica_sms_token']) && $all['alfonica_sms_token']) {
+        $all['alfonica_sms_token'] = str_repeat('*', 20) . substr($all['alfonica_sms_token'], -4);
+    }
 
     json_success(['settings' => $all]);
 }
@@ -58,7 +62,8 @@ if ($method === 'POST') {
         if (!in_array($key, $allowedAll, true)) continue;
 
         // Don't overwrite masked values
-        if ($key === 'wa_access_token' && str_contains((string)$value, '*')) continue;
+        if ($key === 'wa_access_token'    && str_contains((string)$value, '*')) continue;
+        if ($key === 'alfonica_sms_token' && str_contains((string)$value, '*')) continue;
         if ($key === 'smtp_pass' && $value === '••••••••') continue;
 
         set_setting($key, (string)$value);

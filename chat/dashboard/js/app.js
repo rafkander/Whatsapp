@@ -164,6 +164,7 @@ createApp({
             if (convFilter.value === 'unread') params.set('unread', '1');
             if (convFilter.value === 'widget') params.set('channel', 'widget');
             if (convFilter.value === 'wa')     params.set('channel', 'whatsapp');
+            if (convFilter.value === 'sms')    params.set('channel', 'sms');
             if (convSearch.value)              params.set('search', convSearch.value);
 
             const res = await api('GET', `agent/conversations.php?${params}`);
@@ -266,13 +267,25 @@ createApp({
             return c.scrollHeight - c.scrollTop - c.clientHeight < 120;
         }
 
+        let smsInboxTimer = null;
+
+        async function pollSmsInbox() {
+            const res = await api('GET', 'agent/sms_inbox.php');
+            if (res.success && res.new_messages > 0) {
+                await loadConversations();
+                if (view.value === 'sms') await loadSmsConversations();
+            }
+        }
+
         function startPolling() {
             if (pollTimer) return;
+            smsInboxTimer = setInterval(pollSmsInbox, 15000);
             pollTimer = setInterval(async () => {
                 const wasNearBottom = isNearBottom();
                 const prevLen = activeMessages.value.length;
                 await loadMessages();
                 await loadConversations();
+                if (view.value === 'sms') await loadSmsConversations();
                 await checkNotifications();
                 // Only auto-scroll if user was already near the bottom
                 if (wasNearBottom || activeMessages.value.length !== prevLen) {
@@ -283,7 +296,9 @@ createApp({
 
         function stopPolling() {
             clearInterval(pollTimer);
+            clearInterval(smsInboxTimer);
             pollTimer = null;
+            smsInboxTimer = null;
         }
 
         async function checkNotifications(silent = false) {
@@ -299,7 +314,7 @@ createApp({
                 const newMax = Math.max(...res.new_conversations.map(c => c.id));
                 if (!silent && newMax > lastConvId.value) {
                     res.new_conversations.forEach(c => {
-                        if (notifPrefs.toast_new_conv) toast(`New ${c.channel === 'whatsapp' ? '📱 WhatsApp' : '💬 Chat'} from ${c.contact_name || 'Visitor'}`, 'info');
+                        if (notifPrefs.toast_new_conv) toast(`New ${c.channel === 'whatsapp' ? '📱 WhatsApp' : c.channel === 'sms' ? '✉ SMS' : '💬 Chat'} from ${c.contact_name || 'Visitor'}`, 'info');
                         if (notifPrefs.sound) playSound();
                         if (notifPrefs.browser && Notification.permission === 'granted') {
                             new Notification('New Conversation', { body: `${c.contact_name || 'Visitor'} started a conversation` });
@@ -899,6 +914,94 @@ createApp({
             }
         }
 
+        // ── SMS View ──────────────────────────────────────────
+        const smsConversations    = ref([]);
+        const smsActiveConvId     = ref(null);
+        const smsSearch           = ref('');
+
+        const filteredSmsConversations = computed(() => {
+            if (!smsSearch.value) return smsConversations.value;
+            const q = smsSearch.value.toLowerCase();
+            return smsConversations.value.filter(c =>
+                (c.contact_name || '').toLowerCase().includes(q) ||
+                (c.sms_number   || '').includes(q) ||
+                (c.last_message || '').toLowerCase().includes(q)
+            );
+        });
+
+        async function loadSmsConversations() {
+            const res = await api('GET', 'agent/conversations.php?channel=sms&status=open');
+            if (res.success) smsConversations.value = res.conversations;
+        }
+
+        async function openSmsConversation(conv) {
+            smsActiveConvId.value = conv.id;
+            await openConversation(conv);
+        }
+
+        function smsClearActiveAndCompose() {
+            smsActiveConvId.value = null;
+            activeConvId.value    = null;
+            activeConv.value      = null;
+            smsNewPhone.value     = '';
+            smsNewName.value      = '';
+            smsNewMsg.value       = '';
+        }
+
+        // ── SMS Accounts (admin) ──────────────────────────────
+        const smsAccounts         = ref([]);
+        const showSmsAccountModal = ref(false);
+        const editingSmsAccount   = ref(null);
+        const smsAccountForm      = reactive({ name: '', sender_id: '', is_enabled: 1 });
+
+        async function loadSmsAccounts() {
+            const res = await api('GET', 'admin/sms_accounts.php');
+            if (res.success) smsAccounts.value = res.accounts;
+        }
+
+        function newSmsAccount() {
+            editingSmsAccount.value = null;
+            Object.assign(smsAccountForm, { name: '', sender_id: '', is_enabled: 1 });
+            showSmsAccountModal.value = true;
+        }
+
+        function editSmsAccount(acc) {
+            editingSmsAccount.value = acc;
+            Object.assign(smsAccountForm, {
+                name:      acc.name,
+                sender_id: acc.sender_id,
+                is_enabled: acc.is_enabled,
+            });
+            showSmsAccountModal.value = true;
+        }
+
+        async function saveSmsAccount() {
+            let res;
+            if (editingSmsAccount.value) {
+                res = await api('PATCH', `admin/sms_accounts.php?id=${editingSmsAccount.value.id}`, { ...smsAccountForm });
+            } else {
+                res = await api('POST', 'admin/sms_accounts.php', { ...smsAccountForm });
+            }
+            if (res.success) {
+                showSmsAccountModal.value = false;
+                await loadSmsAccounts();
+                toast(editingSmsAccount.value ? 'SMS account updated' : 'SMS account added', 'success');
+            } else {
+                toast(res.error || 'Failed to save', 'error');
+            }
+        }
+
+        async function deleteSmsAccount(id) {
+            if (!confirm('Remove this SMS account? Existing conversations will not be deleted.')) return;
+            const res = await api('DELETE', `admin/sms_accounts.php?id=${id}`);
+            if (res.success) {
+                await loadSmsAccounts();
+                toast('SMS account removed', 'success');
+            } else {
+                toast(res.error || 'Failed to remove', 'error');
+            }
+        }
+
         // ── New WhatsApp conversation ─────────────────────────
         const waNewModal      = ref(false);
         const waNewPhone      = ref('');
@@ -922,6 +1025,40 @@ createApp({
                 await loadConversations();
                 openConversationById(res.conversation_id);
                 toast('WhatsApp conversation started', 'success');
+            } else {
+                toast(res.error || 'Failed to start conversation', 'error');
+            }
+        }
+
+        // ── New SMS conversation ──────────────────────────────
+        const smsNewModal      = ref(false);
+        const smsNewPhone      = ref('');
+        const smsNewName       = ref('');
+        const smsNewMsg        = ref('');
+        const smsNewAccountId  = ref(null);
+
+        async function startSmsConv() {
+            if (!smsNewPhone.value.trim() || !smsNewMsg.value.trim()) {
+                toast('Phone and message are required', 'error');
+                return;
+            }
+            const res = await api('POST', 'agent/sms_start.php', {
+                phone:      smsNewPhone.value.trim(),
+                message:    smsNewMsg.value.trim(),
+                name:       smsNewName.value.trim() || undefined,
+                account_id: smsNewAccountId.value || null,
+            });
+            if (res.success) {
+                smsNewModal.value = false;
+                smsNewPhone.value = '';
+                smsNewName.value  = '';
+                smsNewMsg.value   = '';
+                await loadConversations();
+                await loadSmsConversations();
+                smsActiveConvId.value = res.conversation_id;
+                openConversationById(res.conversation_id);
+                if (res.sms_warning) toast('⚠ ' + res.sms_warning, 'error');
+                else toast('SMS sent', 'success');
             } else {
                 toast(res.error || 'Failed to start conversation', 'error');
             }
@@ -1130,7 +1267,8 @@ createApp({
             if (v === 'departments') { loadDepartments(); if (!agents.value.length) loadAgents(); }
             if (v === 'roles')       loadRoles();
             if (v === 'canned')      loadCanned();
-            if (v === 'settings')    { loadSettings(); loadWaAccounts(); loadBitrix24Settings(); }
+            if (v === 'sms')         { loadSmsConversations(); if (!smsAccounts.value.length) loadSmsAccounts(); }
+            if (v === 'settings')    { loadSettings(); loadWaAccounts(); loadSmsAccounts(); loadBitrix24Settings(); }
             if (v === 'analytics')   loadAnalytics();
         }
 
@@ -1299,6 +1437,7 @@ createApp({
             loadAgents();
             loadCanned();
             loadWaAccounts();
+            loadSmsAccounts();
             checkNotifications(true); // silent baseline — prevents re-alerting on refresh
             startPolling();
 
@@ -1356,6 +1495,14 @@ createApp({
             loadWaAccounts, newWaAccount, editWaAccount, saveWaAccount, deleteWaAccount,
             // New WA conversation
             waNewModal, waNewPhone, waNewMsg, waNewAccountId, startWaConv,
+            // SMS view
+            smsConversations, smsActiveConvId, smsSearch, filteredSmsConversations,
+            loadSmsConversations, openSmsConversation, smsClearActiveAndCompose,
+            // SMS accounts management
+            smsAccounts, showSmsAccountModal, editingSmsAccount, smsAccountForm,
+            loadSmsAccounts, newSmsAccount, editSmsAccount, saveSmsAccount, deleteSmsAccount,
+            // New SMS conversation
+            smsNewModal, smsNewPhone, smsNewName, smsNewMsg, smsNewAccountId, startSmsConv,
             waWindowExpired,
             // Contact edit
             contactEditForm, contactEditLoading, saveContactDetails, historyOpen,

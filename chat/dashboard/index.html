@@ -67,6 +67,14 @@
                 <span class="ib-badge" v-if="unreadTotal > 0">{{ unreadTotal > 99 ? '99+' : unreadTotal }}</span>
             </button>
 
+            <!-- SMS -->
+            <button class="icon-btn" :class="{active: view==='sms'}"
+                    @click="switchView('sms')" v-if="smsAccounts.length > 0 || canAccess('admin')" title="SMS">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+                </svg>
+            </button>
+
             <!-- Canned -->
             <button class="icon-btn" :class="{active: view==='canned'}"
                     @click="switchView('canned')" v-if="canAccess('agent')" title="Canned Responses">
@@ -163,6 +171,219 @@
             </div>
         </nav>
 
+        <!-- ════════ SMS VIEW ════════ -->
+        <template v-if="view==='sms'">
+            <div class="sms-layout">
+
+                <!-- ── Left: Conversation List ── -->
+                <div class="sms-sidebar">
+                    <div class="sms-sidebar-hd">
+                        <div class="sms-sidebar-title">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="opacity:.7"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+                            SMS Conversations
+                        </div>
+                        <div style="display:flex;gap:6px;align-items:center">
+                            <span class="sms-conv-count" v-if="smsConversations.length">{{ smsConversations.length }}</span>
+                            <button class="btn btn-sm sms-new-btn" @click="smsClearActiveAndCompose">+ New</button>
+                        </div>
+                    </div>
+
+                    <div class="sms-search-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="color:#94a3b8;flex-shrink:0"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                        <input class="sms-search-input" type="text" placeholder="Search SMS…" v-model="smsSearch">
+                    </div>
+
+                    <div class="sms-conv-list">
+                        <div class="sms-conv-empty" v-if="!filteredSmsConversations.length">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" style="opacity:.25;margin-bottom:8px"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+                            <div>No SMS conversations yet</div>
+                            <div style="font-size:.75rem;margin-top:4px;color:#94a3b8">Click + New to start one</div>
+                        </div>
+                        <div v-for="c in filteredSmsConversations" :key="c.id"
+                             class="sms-conv-item"
+                             :class="{active: smsActiveConvId===c.id, unread: c.unread_agent>0}"
+                             @click="openSmsConversation(c)">
+                            <div class="sms-conv-ava" :style="{background: avatarColor(c.contact_name||c.contact_email||c.sms_number||'S')}">
+                                {{ initials(c.contact_name || (c.sms_number ? '+'+c.sms_number : 'S')) }}
+                            </div>
+                            <div class="sms-conv-meta">
+                                <div class="sms-conv-row1">
+                                    <span class="sms-conv-name">{{ c.contact_name || (c.sms_number ? '+'+c.sms_number : 'Unknown') }}</span>
+                                    <span class="sms-conv-time">{{ timeAgo(c.last_message_at || c.updated_at) }}</span>
+                                </div>
+                                <div class="sms-conv-row2">
+                                    <span class="sms-conv-preview">{{ truncate(c.last_message || 'No messages yet', 45) }}</span>
+                                    <span class="sms-unread-badge" v-if="c.unread_agent>0">{{ c.unread_agent }}</span>
+                                </div>
+                                <div class="sms-conv-tags">
+                                    <span class="sms-sender-pill">{{ c.sms_account_name || 'SMS' }}</span>
+                                    <span :class="`sms-status-dot sms-status-${c.status}`"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Right: Compose or Active Chat ── -->
+                <div class="sms-main">
+
+                    <!-- Compose Panel (no active conversation) -->
+                    <div class="sms-compose-wrap" v-if="!smsActiveConvId">
+                        <div class="sms-compose-card">
+                            <div class="sms-compose-card-hd">
+                                <div class="sms-compose-icon">
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+                                </div>
+                                <div>
+                                    <div class="sms-compose-card-title">New SMS Message</div>
+                                    <div class="sms-compose-card-sub">Send a message to any mobile number</div>
+                                </div>
+                            </div>
+                            <div class="sms-compose-card-body">
+                                <div class="sms-field-group">
+                                    <label class="sms-label">Send From</label>
+                                    <div class="sms-sender-grid">
+                                        <div v-for="acc in smsAccounts.filter(a=>a.is_enabled)" :key="acc.id"
+                                             class="sms-sender-option"
+                                             :class="{selected: smsNewAccountId===acc.id}"
+                                             @click="smsNewAccountId=acc.id">
+                                            <div class="sms-sender-option-icon">
+                                                <svg v-if="acc.sender_id.match(/^\d+$/)" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                                                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+                                            </div>
+                                            <div>
+                                                <div class="sms-sender-option-name">{{ acc.name }}</div>
+                                                <div class="sms-sender-option-id">{{ acc.sender_id }}</div>
+                                            </div>
+                                            <div class="sms-sender-option-check" v-if="smsNewAccountId===acc.id">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                                    <div class="sms-field-group">
+                                        <label class="sms-label">To <span style="color:#94a3b8;font-weight:400">(phone number)</span></label>
+                                        <div class="sms-input-wrap">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color:#94a3b8;flex-shrink:0"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                                            <input class="sms-input" type="tel" v-model="smsNewPhone" placeholder="447911123456">
+                                        </div>
+                                    </div>
+                                    <div class="sms-field-group">
+                                        <label class="sms-label">Contact Name <span style="color:#94a3b8;font-weight:400">(optional)</span></label>
+                                        <div class="sms-input-wrap">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color:#94a3b8;flex-shrink:0"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                            <input class="sms-input" type="text" v-model="smsNewName" placeholder="John Smith">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="sms-field-group">
+                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                                        <label class="sms-label" style="margin-bottom:0">Message</label>
+                                        <span class="sms-char-count" :class="{warn: smsNewMsg.length > 140, over: smsNewMsg.length > 160}">
+                                            {{ smsNewMsg.length }}/160
+                                            <span v-if="smsNewMsg.length > 160" style="margin-left:4px">({{ Math.ceil(smsNewMsg.length/153) }} parts)</span>
+                                        </span>
+                                    </div>
+                                    <textarea class="sms-textarea" v-model="smsNewMsg" rows="4"
+                                              placeholder="Type your message here…"
+                                              @keydown.ctrl.enter="startSmsConv"></textarea>
+                                </div>
+
+                                <div class="sms-compose-actions">
+                                    <div class="sms-compose-hint">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                                        Ctrl+Enter to send
+                                    </div>
+                                    <button class="sms-send-btn" @click="startSmsConv" :disabled="!smsNewPhone.trim() || !smsNewMsg.trim() || !smsNewAccountId">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                                        Send Message
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active conversation (reuse existing chat inner) -->
+                    <div class="chat-panel" style="display:flex;flex-direction:column;height:100%" v-else>
+                        <template v-if="activeConv">
+                            <div class="chat-inner">
+                                <div class="chat-header">
+                                    <button class="btn btn-ghost btn-sm" @click="smsActiveConvId=null;activeConvId=null;activeConv=null" style="margin-right:8px;padding:4px 8px">←</button>
+                                    <div class="chat-contact-ava" :style="{background: avatarColor(activeConv?.contact_name||'S')}">
+                                        {{ initials(activeConv?.contact_name || 'S') }}
+                                    </div>
+                                    <div class="chat-contact-info">
+                                        <div class="chat-contact-name">
+                                            {{ activeConv?.contact_name || activeConv?.sms_number || 'Unknown' }}
+                                            <span class="wa-badge" style="background:#f3e8ff;color:#7c3aed">
+                                                ✉ {{ activeConv?.sms_account_name || 'SMS' }}
+                                            </span>
+                                            <span :class="`status-badge status-${activeConv?.status}`" style="font-size:.68rem;padding:3px 8px">{{ activeConv?.status }}</span>
+                                        </div>
+                                        <div class="chat-contact-sub">
+                                            <template v-if="activeConv?.sms_number">📱 +{{ activeConv.sms_number }}</template>
+                                            <template v-if="activeConv?.agent_name"> · 👤 {{ activeConv.agent_name }}</template>
+                                        </div>
+                                    </div>
+                                    <div class="chat-actions">
+                                        <button class="btn btn-ghost btn-sm" @click="closeConv" v-if="activeConv?.status!=='closed'" title="Close">✓ Close</button>
+                                        <button class="btn btn-ghost btn-sm" @click="reopenConv" v-else title="Reopen">↺ Reopen</button>
+                                    </div>
+                                </div>
+                                <div class="msg-list" ref="msgContainer">
+                                    <template v-for="(msg, i) in activeMessages" :key="msg.id">
+                                        <div class="date-sep" v-if="showDateSep(msg, activeMessages[i-1])">
+                                            <span>{{ formatDate(msg.created_at) }}</span>
+                                        </div>
+                                        <div :class="['msg-row', msg.sender_type==='agent'?'msg-out': msg.sender_type==='system'?'msg-system':'msg-in']">
+                                            <div v-if="msg.sender_type==='system'" class="msg-system-text">{{ msg.content }}</div>
+                                            <template v-else>
+                                                <div class="msg-bubble">
+                                                    <div class="msg-text" v-html="nl2br(msg.content)"></div>
+                                                    <div class="msg-time">{{ formatTime(msg.created_at) }}<span v-if="msg.sender_type==='agent'" style="margin-left:4px">{{ msg.sender_name || '' }}</span></div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                    <div class="typing-indicator" v-if="visitorTyping"><span></span><span></span><span></span></div>
+                                </div>
+                                <div class="take-banner" v-if="activeConv?.status!=='closed' && !canReply">
+                                    <span v-if="activeConv?.agent_name">🔒 Assigned to <strong>{{ activeConv.agent_name }}</strong></span>
+                                    <span v-else>🔒 No one has taken this yet</span>
+                                    <button class="btn btn-primary btn-sm" @click="takeConversation" style="margin-left:12px">Take Conversation</button>
+                                </div>
+                                <div class="input-area" v-if="activeConv?.status!=='closed' && canReply">
+                                    <div class="canned-pop" v-if="cannedSuggestions.length">
+                                        <div class="canned-pop-item" v-for="c in cannedSuggestions" :key="c.id" @mousedown.prevent="applyCanned(c)">
+                                            <div class="canned-sc">/{{ c.shortcut }}</div>
+                                            <div class="canned-ttl">{{ c.title }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="input-toolbar">
+                                        <span style="flex:1"></span>
+                                        <span class="sms-char-count" :class="{warn:inputText.length>140,over:inputText.length>160}" style="font-size:.7rem;color:#94a3b8">{{ inputText.length }}/160</span>
+                                    </div>
+                                    <div class="input-row">
+                                        <textarea class="agent-input" ref="agentInput" v-model="inputText"
+                                                  @input="onAgentInput" @keydown="onAgentTyping"
+                                                  @keydown.enter.exact.prevent="sendAgentMessage"
+                                                  placeholder="Type your SMS reply…" rows="1"></textarea>
+                                        <button class="send-btn" @click="sendAgentMessage" :disabled="!inputText.trim()">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                </div>
+            </div>
+        </template>
+
         <!-- ════════ CONVERSATIONS VIEW ════════ -->
         <template v-if="view==='conversations'">
 
@@ -227,7 +448,7 @@
             <div class="conv-list-panel">
                 <div class="conv-list-header">
                     <span class="conv-list-title-text">
-                        {{ convFilter==='open' ? 'Unassigned' : convFilter==='mine' ? 'My Open' : convFilter==='closed' ? 'Solved' : convFilter==='widget' ? 'Web Widget' : convFilter==='wa' ? 'WhatsApp' : convFilter==='unread' ? 'Unread' : 'All Conversations' }}
+                        {{ convFilter==='open' ? 'Unassigned' : convFilter==='mine' ? 'My Open' : convFilter==='closed' ? 'Solved' : convFilter==='widget' ? 'Web Widget' : convFilter==='wa' ? 'WhatsApp' : convFilter==='sms' ? 'SMS' : convFilter==='unread' ? 'Unread' : 'All Conversations' }}
                     </span>
                 </div>
 
@@ -258,6 +479,9 @@
                                 <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
                                     <span v-if="c.channel==='whatsapp'" style="font-size:.66rem;color:#16a34a;font-weight:600;white-space:nowrap">
                                         📱 {{ c.wa_account_name || 'WhatsApp' }}
+                                    </span>
+                                    <span v-if="c.channel==='sms'" style="font-size:.66rem;color:#7c3aed;font-weight:600;white-space:nowrap">
+                                        ✉ {{ c.sms_account_name || 'SMS' }}
                                     </span>
                                     <span v-if="c.dept_name" class="dept-pill" :style="{background:(c.dept_color||'#2563eb')+'18',color:c.dept_color||'#2563eb'}">
                                         {{ c.dept_name }}
@@ -314,6 +538,9 @@
                                     {{ activeConv?.contact_name || activeConv?.contact_email || 'Visitor' }}
                                     <span class="wa-badge" v-if="activeConv?.channel==='whatsapp'">
                                         📱 {{ activeConv.wa_account_name || 'WhatsApp' }}
+                                    </span>
+                                    <span class="wa-badge" v-if="activeConv?.channel==='sms'" style="background:#f3e8ff;color:#7c3aed">
+                                        ✉ {{ activeConv.sms_account_name || 'SMS' }}
                                     </span>
                                     <span :class="`status-badge status-${activeConv?.status}`" style="font-size:.68rem;padding:3px 8px">
                                         {{ activeConv?.status }}
@@ -1077,6 +1304,80 @@
                     </div>
                 </div>
 
+                <!-- SMS Integration Card -->
+                <div class="card settings-section">
+                    <div class="card-hd">✉ Alfonica SMS</div>
+                    <div style="padding:20px">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+                            <div class="f-group" style="margin-bottom:0">
+                                <div class="toggle-wrap">
+                                    <label class="toggle"><input type="checkbox" v-model="settings.sms_enabled" true-value="1" false-value="0"><span class="toggle-track"></span></label>
+                                    <span class="toggle-lbl">Enable SMS Integration</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="f-group" style="background:#f0fdf4;padding:12px;border-radius:8px;border:1px solid #bbf7d0;margin-bottom:18px">
+                            <div class="f-label" style="text-transform:none;font-size:.71rem;color:#059669;letter-spacing:0;margin-bottom:6px">Inbound SMS Webhook URL — paste this into your Alfonica SMS dashboard</div>
+                            <code style="font-size:.78rem;word-break:break-all;color:#047857;font-weight:600">{{ apiBase }}/api/webhook/sms.php</code>
+                        </div>
+                        <div class="f-group">
+                            <label class="f-label">Alfonica API Token <span style="color:var(--text-muted);font-weight:400">(shared by all sender IDs)</span></label>
+                            <input class="f-input" type="password" v-model="settings.alfonica_sms_token" placeholder="Paste your Alfonica Bearer token">
+                        </div>
+                        <!-- SMS Numbers -->
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                            <div class="f-label" style="margin-bottom:0">SMS Accounts</div>
+                            <button class="btn btn-sm" @click="newSmsAccount" v-if="canAccess('admin')" style="font-size:.75rem;padding:4px 10px">+ Add Account</button>
+                        </div>
+                        <table class="data-table" v-if="smsAccounts.length" style="font-size:.82rem">
+                            <thead><tr><th>Name</th><th>Sender ID</th><th>Status</th><th v-if="canAccess('admin')"></th></tr></thead>
+                            <tbody>
+                                <tr v-for="acc in smsAccounts" :key="acc.id">
+                                    <td><strong>{{ acc.name }}</strong></td>
+                                    <td><code style="font-size:.72rem">{{ acc.sender_id }}</code></td>
+                                    <td><span :class="acc.is_enabled ? 'status-badge status-open' : 'status-badge status-closed'" style="font-size:.63rem">{{ acc.is_enabled ? 'Active' : 'Disabled' }}</span></td>
+                                    <td v-if="canAccess('admin')" style="white-space:nowrap">
+                                        <button class="btn btn-xs" @click="editSmsAccount(acc)" style="font-size:.72rem;padding:2px 8px">Edit</button>
+                                        <button class="btn btn-xs" @click="deleteSmsAccount(acc.id)" style="font-size:.72rem;padding:2px 8px;margin-left:4px;background:#fee2e2;color:#dc2626;border-color:#fca5a5">Delete</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div v-else style="color:var(--text-3);font-size:.82rem;text-align:center;padding:14px;border:1px dashed var(--border);border-radius:8px">
+                            No SMS accounts configured yet. Click <strong>+ Add Account</strong> to get started.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SMS Account Modal -->
+                <div class="modal-overlay" v-if="showSmsAccountModal" @click.self="showSmsAccountModal=false">
+                    <div class="modal">
+                        <div class="modal-hd">
+                            <div class="modal-title">{{ editingSmsAccount ? 'Edit' : 'Add' }} SMS Account</div>
+                            <button class="modal-close" @click="showSmsAccountModal=false">✕</button>
+                        </div>
+                        <div class="modal-body">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                                <div class="f-group"><label class="f-label">Display Name</label><input class="f-input" v-model="smsAccountForm.name" placeholder="e.g. Alfonica Main"></div>
+                                <div class="f-group">
+                                    <label class="f-label">Sender ID <span style="color:var(--text-muted);font-weight:400">(phone number or name, e.g. RCUK)</span></label>
+                                    <input class="f-input" v-model="smsAccountForm.sender_id" placeholder="e.g. RCUK or 447911123456">
+                                </div>
+                            </div>
+                            <div class="f-group" style="margin-bottom:0">
+                                <div class="toggle-wrap">
+                                    <label class="toggle"><input type="checkbox" v-model="smsAccountForm.is_enabled" :true-value="1" :false-value="0"><span class="toggle-track"></span></label>
+                                    <span class="toggle-lbl">Enabled</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-ft">
+                            <button class="btn btn-ghost" @click="showSmsAccountModal=false">Cancel</button>
+                            <button class="btn btn-primary" @click="saveSmsAccount">{{ editingSmsAccount ? 'Save Changes' : 'Add Account' }}</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Bitrix24 CRM Integration Card -->
                 <div class="card settings-section" v-if="canAccess('admin')">
                     <div class="card-hd">🔗 Bitrix24 CRM Integration</div>
@@ -1478,6 +1779,42 @@
             <div class="modal-ft">
                 <button class="btn btn-ghost" @click="showRoleModal=false">Cancel</button>
                 <button class="btn btn-primary" @click="saveRole">Save Role →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New SMS conversation modal -->
+    <div class="modal-overlay" v-if="smsNewModal" @click.self="smsNewModal=false">
+        <div class="modal">
+            <div class="modal-hd">
+                <div class="modal-title">✉ New SMS Conversation</div>
+                <button class="modal-close" @click="smsNewModal=false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="f-group" v-if="smsAccounts.length > 1">
+                    <label class="f-label">Send from</label>
+                    <select class="f-input" v-model="smsNewAccountId">
+                        <option v-for="acc in smsAccounts.filter(a => a.is_enabled)" :key="acc.id" :value="acc.id">{{ acc.name }} ({{ acc.sender_id }})</option>
+                    </select>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                    <div class="f-group">
+                        <label class="f-label">Phone Number <span style="color:var(--text-muted)">(international, e.g. 447911123456)</span></label>
+                        <input class="f-input" v-model="smsNewPhone" placeholder="447911123456" type="tel">
+                    </div>
+                    <div class="f-group">
+                        <label class="f-label">Contact Name <span style="color:var(--text-muted)">(optional)</span></label>
+                        <input class="f-input" v-model="smsNewName" placeholder="John Smith">
+                    </div>
+                </div>
+                <div class="f-group">
+                    <label class="f-label">Message</label>
+                    <textarea class="f-textarea" v-model="smsNewMsg" rows="3" placeholder="Hi, I'm reaching out regarding…"></textarea>
+                </div>
+            </div>
+            <div class="modal-ft">
+                <button class="btn btn-ghost" @click="smsNewModal=false">Cancel</button>
+                <button class="btn btn-primary" @click="startSmsConv">Send &amp; Open →</button>
             </div>
         </div>
     </div>

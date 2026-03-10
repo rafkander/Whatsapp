@@ -21,13 +21,17 @@ $pdo = db();
 function fetch_conv(int $id): ?array {
     $stmt = db()->prepare("
         SELECT c.*, co.name AS contact_name, co.email AS contact_email,
-               co.phone, co.whatsapp_number, co.ip, co.browser, co.os,
+               co.phone, co.whatsapp_number, co.sms_number, co.ip, co.browser, co.os,
                d.name AS dept_name, d.color AS dept_color,
-               a.name AS agent_name, a.avatar AS agent_avatar
+               a.name AS agent_name, a.avatar AS agent_avatar,
+               wa.name AS wa_account_name,
+               sa.name AS sms_account_name
         FROM conversations c
         JOIN contacts co ON co.id = c.contact_id
         LEFT JOIN departments d ON d.id = c.dept_id
         LEFT JOIN agents a ON a.id = c.assigned_agent_id
+        LEFT JOIN wa_accounts wa ON wa.id = c.wa_account_id
+        LEFT JOIN sms_accounts sa ON sa.id = c.sms_account_id
         WHERE c.id = ?
     ");
     $stmt->execute([$id]);
