@@ -6,3 +6,5 @@
 [2026-03-10 15:33:18] SEND to=447385297011 status=200 response={"status":"error","message":"The sender name is blank or invalid. To request a sender ID please contact support."}
 [2026-03-10 15:34:04] SEND to=447385297011 status=200 response={"status":"error","message":"The sender name is blank or invalid. To request a sender ID please contact support."}
 [2026-03-10 15:50:55] SEND to=447385297011 status=200 response={"status":"error","message":"The sender name is blank or invalid. To request a sender ID please contact support."}
+[2026-03-11 12:49:02] SEND to=447385297011 status=200 response={"status":"success","message":"Your message was successfully delivered","data":[{"uid":"69b164bd51ef7","to":"447385297011","from":"RCUK","message":"Hi","status":"Sent|MT2026031112490131400","cost":"1"}]}
+[2026-03-11 12:49:03] SEND to=447385297011 status=200 response={"status":"success","message":"Your message was successfully delivered","data":[{"uid":"69b164be92a20","to":"447385297011","from":"RCUK","message":"Hi","status":"Sent|MT2026031112490257300","cost":"1"}]}

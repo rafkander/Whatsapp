@@ -209,6 +209,12 @@ createApp({
                 contactEditForm.name  = cRes.contact?.name  || '';
                 contactEditForm.email = cRes.contact?.email || '';
                 contactEditForm.phone = cRes.contact?.phone || cRes.contact?.whatsapp_number || '';
+
+                // Auto-trigger Bitrix24 lookup if contact has a phone but no cached data
+                const hasPhone = !!(cRes.contact?.phone || cRes.contact?.whatsapp_number || cRes.contact?.sms_number);
+                if (cRes.bitrix24_enabled && hasPhone && !cRes.bitrix24) {
+                    refreshBitrix24(true);
+                }
             }
 
             // Load agents & depts for assign dropdowns
@@ -1069,6 +1075,48 @@ createApp({
         const analyticsFrom = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
         const analyticsTo   = ref(new Date().toISOString().slice(0, 10));
 
+        // ── SMS Log ───────────────────────────────────────────
+        const smsLogRows     = ref([]);
+        const smsLogTotal    = ref(0);
+        const smsLogPage     = ref(1);
+        const smsLogLimit    = ref(50);
+        const smsLogLoading  = ref(false);
+        const smsLogSearch   = ref('');
+        const smsLogAgent    = ref('');
+        const smsLogAccount  = ref('');
+        const smsLogFrom     = ref('');
+        const smsLogTo       = ref('');
+        const smsLogAgents   = ref([]);
+        const smsLogAccounts = ref([]);
+
+        async function loadSmsLog() {
+            smsLogLoading.value = true;
+            const params = new URLSearchParams({
+                page:  smsLogPage.value,
+                limit: smsLogLimit.value,
+            });
+            if (smsLogSearch.value)  params.set('search',  smsLogSearch.value);
+            if (smsLogAgent.value)   params.set('agent',   smsLogAgent.value);
+            if (smsLogAccount.value) params.set('account', smsLogAccount.value);
+            if (smsLogFrom.value)    params.set('from',    smsLogFrom.value);
+            if (smsLogTo.value)      params.set('to',      smsLogTo.value);
+            const res = await api('GET', `admin/sms_log.php?${params}`);
+            smsLogLoading.value = false;
+            if (res.success) {
+                smsLogRows.value     = res.rows;
+                smsLogTotal.value    = res.total;
+                if (res.agents)   smsLogAgents.value   = res.agents;
+                if (res.accounts) smsLogAccounts.value = res.accounts;
+            }
+        }
+
+        function formatDateTime(dt) {
+            if (!dt) return '—';
+            const d = new Date(dt);
+            return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+                 + ' ' + d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+        }
+
         async function loadAnalytics() {
             const res = await api('GET', `admin/analytics.php?from=${analyticsFrom.value}&to=${analyticsTo.value}`);
             if (res.success) analytics.value = res;
@@ -1183,7 +1231,7 @@ createApp({
         }
 
         // ── Bitrix24 Functions ────────────────────────────────
-        async function refreshBitrix24() {
+        async function refreshBitrix24(silent = false) {
             if (!activeConvId.value) return;
             bitrix24Loading.value = true;
             const res = await api('POST', 'agent/bitrix_lookup.php', { conv_id: activeConvId.value });
@@ -1191,9 +1239,9 @@ createApp({
             if (res.success) {
                 bitrix24Data.value     = res.bitrix24_data || null;
                 bitrix24SyncedAt.value = res.synced_at || null;
-                toast(res.found ? 'CRM record refreshed' : 'No CRM record found', res.found ? 'success' : 'info');
+                if (!silent) toast(res.found ? 'CRM record refreshed' : 'No CRM record found', res.found ? 'success' : 'info');
             } else {
-                toast(res.error || 'Refresh failed', 'error');
+                if (!silent) toast(res.error || 'Refresh failed', 'error');
             }
         }
 
@@ -1269,6 +1317,7 @@ createApp({
             if (v === 'canned')      loadCanned();
             if (v === 'sms')         { loadSmsConversations(); if (!smsAccounts.value.length) loadSmsAccounts(); }
             if (v === 'settings')    { loadSettings(); loadWaAccounts(); loadSmsAccounts(); loadBitrix24Settings(); }
+            if (v === 'smslog')      loadSmsLog();
             if (v === 'analytics')   loadAnalytics();
         }
 
@@ -1500,6 +1549,9 @@ createApp({
             loadSmsConversations, openSmsConversation, smsClearActiveAndCompose,
             // SMS accounts management
             smsAccounts, showSmsAccountModal, editingSmsAccount, smsAccountForm,
+            smsLogRows, smsLogTotal, smsLogPage, smsLogLimit, smsLogLoading,
+            smsLogSearch, smsLogAgent, smsLogAccount, smsLogFrom, smsLogTo,
+            smsLogAgents, smsLogAccounts, loadSmsLog, formatDateTime,
             loadSmsAccounts, newSmsAccount, editSmsAccount, saveSmsAccount, deleteSmsAccount,
             // New SMS conversation
             smsNewModal, smsNewPhone, smsNewName, smsNewMsg, smsNewAccountId, startSmsConv,

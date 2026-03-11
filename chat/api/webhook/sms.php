@@ -92,12 +92,12 @@ $contact = $stmt->fetch();
 if (!$contact) {
     $uid = 'sms_' . $sender;
     try {
-        $pdo->prepare('INSERT INTO contacts (uid, name, sms_number, ip) VALUES (?, ?, ?, NULL)')
+        $pdo->prepare('INSERT INTO contacts (uid, name, phone, sms_number, ip) VALUES (?, NULL, ?, ?, NULL)')
             ->execute([$uid, '+' . $sender, $sender]);
     } catch (\PDOException $e) {
         if ($e->getCode() === '23000') {
             $uid = 'sms_' . $sender . '_' . time();
-            $pdo->prepare('INSERT INTO contacts (uid, name, sms_number, ip) VALUES (?, ?, ?, NULL)')
+            $pdo->prepare('INSERT INTO contacts (uid, name, phone, sms_number, ip) VALUES (?, NULL, ?, ?, NULL)')
                 ->execute([$uid, '+' . $sender, $sender]);
         } else { throw $e; }
     }
@@ -168,8 +168,13 @@ $created = $ts ? date('Y-m-d H:i:s', is_numeric($ts) ? (int)$ts : strtotime($ts)
 $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type, wa_message_id, created_at) VALUES (?, 'visitor', ?, 'text', ?, ?)")
     ->execute([$convId, $message, $msgId ? 'sms_' . $msgId : null, $created]);
 
-$pdo->prepare('UPDATE conversations SET updated_at = NOW(), unread_agent = unread_agent + 1 WHERE id = ?')
-    ->execute([$convId]);
+if (!$isNew) {
+    $pdo->prepare('UPDATE conversations SET updated_at = NOW(), unread_agent = unread_agent + 1 WHERE id = ?')
+        ->execute([$convId]);
+} else {
+    $pdo->prepare('UPDATE conversations SET updated_at = NOW() WHERE id = ?')
+        ->execute([$convId]);
+}
 
 if ($isNew) {
     notify_new_conversation(['id' => $convId, 'channel' => 'sms', 'page_url' => ''], $contact);
