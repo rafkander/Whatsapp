@@ -2,3 +2,7 @@
 [2026-03-10 14:41:05] SEND to=07385297011 status=200 response={"status":"error","message":"The sender name is blank or invalid. To request a sender ID please contact support."}
 [2026-03-10 14:41:21] SEND to=07385297011 status=200 response={"status":"success","message":"Your message was successfully delivered","data":[{"uid":"69b02d90f2383","to":"07385297011","from":"447479274360","message":"Poo","status":"Could not interpret numbers after plus-sign.","cost":"1"}]}
 [2026-03-10 15:02:42] SEND to=07385297011 status=200 response={"status":"success","message":"Your message was successfully delivered","data":[{"uid":"69b03291b8acc","to":"07385297011","from":"447479274360","message":"Test","status":"Could not interpret numbers after plus-sign.","cost":"1"}]}
+[2026-03-10 15:32:59] SEND to=447385297011 status=200 response={"status":"success","message":"Your message was successfully delivered","data":[{"uid":"69b039ab0357d","to":"447385297011","from":"RCUK","message":"HI","status":"Sent|MT2026031015325899400","cost":"1"}]}
+[2026-03-10 15:33:18] SEND to=447385297011 status=200 response={"status":"error","message":"The sender name is blank or invalid. To request a sender ID please contact support."}
+[2026-03-10 15:34:04] SEND to=447385297011 status=200 response={"status":"error","message":"The sender name is blank or invalid. To request a sender ID please contact support."}
+[2026-03-10 15:50:55] SEND to=447385297011 status=200 response={"status":"error","message":"The sender name is blank or invalid. To request a sender ID please contact support."}

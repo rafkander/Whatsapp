@@ -91,9 +91,9 @@ if (!$contact) {
     $contactId = (int)$contact['id'];
 }
 
-// Create conversation — bot_state='done' so bot never fires on outbound SMS
+// Create conversation as 'pending' — hidden from dashboard until the contact replies
 $pdo->prepare("INSERT INTO conversations (contact_id, channel, sms_account_id, status, assigned_agent_id, bot_state, unread_agent)
-               VALUES (?, 'sms', ?, 'open', ?, 'done', 0)")
+               VALUES (?, 'sms', ?, 'pending', ?, 'done', 0)")
     ->execute([$contactId, $smsAccountId, (int)$agent['id']]);
 
 $convId = (int)$pdo->lastInsertId();

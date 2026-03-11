@@ -53,16 +53,17 @@ if (str_contains($ct, 'application/json') || str_starts_with($rawBody, '{')) {
     if (empty($data)) $data = $_POST;
 }
 
-// ── Extract fields — Alfonica uses several possible structures ─
-// Structure A: { sender, receiver, message, msgid, date }
-// Structure B: { data: { sender, receiver, message } }
-// Structure C: { from, to, text }
+// ── Extract fields ────────────────────────────────────────────
+// Structure A: { sender, receiver, message, msgid, date }      (Alfonica)
+// Structure B: { data: { sender, receiver, message } }          (Alfonica nested)
+// Structure C: { from, to, text }                               (generic)
+// Structure D: From, To, Body, MessageSid, numMedia             (Twilio-style)
 $inner = $data['data'] ?? $data;
 
-$sender  = $inner['sender']   ?? $inner['from']      ?? $inner['msisdn']    ?? '';
-$to      = $inner['receiver'] ?? $inner['to']         ?? $inner['to_number'] ?? '';
-$message = $inner['message']  ?? $inner['text']       ?? $inner['msg']       ?? '';
-$msgId   = $inner['msgid']    ?? $inner['message_id'] ?? $inner['id']        ?? '';
+$sender  = $inner['From']     ?? $inner['sender']   ?? $inner['from']      ?? $inner['msisdn']    ?? '';
+$to      = $inner['To']       ?? $inner['receiver'] ?? $inner['to']         ?? $inner['to_number'] ?? '';
+$message = $inner['Body']     ?? $inner['message']  ?? $inner['text']       ?? $inner['msg']       ?? '';
+$msgId   = $inner['MessageSid'] ?? $inner['msgid']  ?? $inner['message_id'] ?? $inner['id']        ?? '';
 $ts      = $inner['date']     ?? $inner['timestamp']  ?? $inner['time']      ?? '';
 
 // Normalise sender: digits only
@@ -125,12 +126,15 @@ if (!$smsAccountId) {
 }
 
 // ── Find open conversation or create one ─────────────────────
-$stmt = $pdo->prepare("
-    SELECT * FROM conversations
-    WHERE contact_id = ? AND channel = 'sms'
-    ORDER BY updated_at DESC LIMIT 1
-");
-$stmt->execute([$contactId]);
+$convQuery = "SELECT * FROM conversations WHERE contact_id = ? AND channel = 'sms'";
+$convParams = [$contactId];
+if ($smsAccountId) {
+    $convQuery .= ' AND (sms_account_id = ? OR sms_account_id IS NULL)';
+    $convParams[] = $smsAccountId;
+}
+$convQuery .= ' ORDER BY updated_at DESC LIMIT 1';
+$stmt = $pdo->prepare($convQuery);
+$stmt->execute($convParams);
 $conv = $stmt->fetch();
 
 $isNew = false;
@@ -145,6 +149,12 @@ if (!$conv) {
         ->execute([$smsAccountId, $convId]);
     $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened by contact', 'system')")
         ->execute([$convId]);
+    $isNew = true;
+} elseif ($conv['status'] === 'pending') {
+    // First reply to an agent-initiated outbound SMS — make it visible
+    $convId = (int)$conv['id'];
+    $pdo->prepare("UPDATE conversations SET status = 'open', sms_account_id = COALESCE(sms_account_id, ?), unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
+        ->execute([$smsAccountId, $convId]);
     $isNew = true;
 } else {
     $convId = (int)$conv['id'];
