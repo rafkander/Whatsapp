@@ -85,28 +85,8 @@ if ($msgId) {
 }
 
 // ── Get or create contact ─────────────────────────────────────
-$stmt = $pdo->prepare('SELECT * FROM contacts WHERE sms_number = ?');
-$stmt->execute([$sender]);
-$contact = $stmt->fetch();
-
-if (!$contact) {
-    $uid = 'sms_' . $sender;
-    try {
-        $pdo->prepare('INSERT INTO contacts (uid, name, phone, sms_number, ip) VALUES (?, NULL, ?, ?, NULL)')
-            ->execute([$uid, '+' . $sender, $sender]);
-    } catch (\PDOException $e) {
-        if ($e->getCode() === '23000') {
-            $uid = 'sms_' . $sender . '_' . time();
-            $pdo->prepare('INSERT INTO contacts (uid, name, phone, sms_number, ip) VALUES (?, NULL, ?, ?, NULL)')
-                ->execute([$uid, '+' . $sender, $sender]);
-        } else { throw $e; }
-    }
-    $contactId = (int)$pdo->lastInsertId();
-    $stmt->execute([$sender]);
-    $contact = $stmt->fetch();
-} else {
-    $contactId = (int)$contact['id'];
-}
+$contact   = find_or_create_contact($pdo, $sender, null, 'sms');
+$contactId = (int)$contact['id'];
 
 // ── Match sender ID to sms_account ───────────────────────────
 $smsAccountId = null;

@@ -60,19 +60,9 @@ if (!$waCreds) {
     }
 }
 
-// Get-or-create contact by whatsapp_number
-$stmt = $pdo->prepare('SELECT * FROM contacts WHERE whatsapp_number = ?');
-$stmt->execute([$phone]);
-$contact = $stmt->fetch();
-
-if (!$contact) {
-    $uid = 'wa_' . $phone;
-    $pdo->prepare('INSERT INTO contacts (uid, name, whatsapp_number, ip) VALUES (?, ?, ?, NULL)')
-        ->execute([$uid, '+' . $phone, $phone]);
-    $contactId = (int)$pdo->lastInsertId();
-} else {
-    $contactId = (int)$contact['id'];
-}
+// Get-or-create contact — cross-channel dedup
+$contact   = find_or_create_contact($pdo, $phone, null, 'whatsapp');
+$contactId = (int)$contact['id'];
 
 // Create conversation — bot_state='done' so bot never fires on outbound
 $pdo->prepare("INSERT INTO conversations (contact_id, channel, wa_account_id, status, assigned_agent_id, bot_state, unread_agent)

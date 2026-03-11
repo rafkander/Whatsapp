@@ -160,22 +160,8 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts, ?array
 
     $uid = 'wa_' . $from;
 
-    $stmt = $pdo->prepare('SELECT * FROM contacts WHERE whatsapp_number = ?');
-    $stmt->execute([$from]);
-    $contact = $stmt->fetch();
-
-    if (!$contact) {
-        $pdo->prepare('INSERT INTO contacts (uid, name, whatsapp_number, ip) VALUES (?, ?, ?, NULL)')
-            ->execute([$uid, $waContactName ?: $from, $from]);
-        $contactId = (int)$pdo->lastInsertId();
-        $stmt->execute([$from]);
-        $contact = $stmt->fetch();
-    } else {
-        $contactId = (int)$contact['id'];
-        if ($waContactName && !$contact['name']) {
-            $pdo->prepare('UPDATE contacts SET name = ? WHERE id = ?')->execute([$waContactName, $contactId]);
-        }
-    }
+    $contact   = find_or_create_contact($pdo, $from, $waContactName ?: null, 'whatsapp');
+    $contactId = (int)$contact['id'];
 
     // Find open or most recent conversation — filter by account if known
     $convQuery = "SELECT * FROM conversations WHERE contact_id = ? AND channel = 'whatsapp'";

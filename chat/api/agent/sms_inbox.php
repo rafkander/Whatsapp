@@ -108,28 +108,9 @@ foreach ($messages as $sms) {
         if ($acc) $smsAccountId = (int)$acc['id'];
     }
 
-    // Get or create contact
-    $stmt = $pdo->prepare('SELECT * FROM contacts WHERE sms_number = ?');
-    $stmt->execute([$fromClean]);
-    $contact = $stmt->fetch();
-
-    if (!$contact) {
-        $uid_c = 'sms_' . $fromClean;
-        try {
-            $pdo->prepare('INSERT INTO contacts (uid, name, sms_number, ip) VALUES (?, ?, ?, NULL)')
-                ->execute([$uid_c, '+' . $fromClean, $fromClean]);
-        } catch (\PDOException $e) {
-            if ($e->getCode() === '23000') {
-                $pdo->prepare('INSERT INTO contacts (uid, name, sms_number, ip) VALUES (?, ?, ?, NULL)')
-                    ->execute([$uid_c . '_' . time(), '+' . $fromClean, $fromClean]);
-            } else { throw $e; }
-        }
-        $contactId = (int)$pdo->lastInsertId();
-        $stmt->execute([$fromClean]);
-        $contact = $stmt->fetch();
-    } else {
-        $contactId = (int)$contact['id'];
-    }
+    // Get or create contact — cross-channel dedup
+    $contact   = find_or_create_contact($pdo, $fromClean, null, 'sms');
+    $contactId = (int)$contact['id'];
 
     // Find or create conversation
     $stmt = $pdo->prepare("SELECT * FROM conversations WHERE contact_id = ? AND channel = 'sms' ORDER BY updated_at DESC LIMIT 1");

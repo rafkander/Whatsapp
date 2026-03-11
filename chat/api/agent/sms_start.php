@@ -65,31 +65,9 @@ if (!$smsCreds) {
 
 if (!$smsCreds) json_error('No SMS account available', 400);
 
-// Get-or-create contact by sms_number
-$stmt = $pdo->prepare('SELECT * FROM contacts WHERE sms_number = ?');
-$stmt->execute([$phone]);
-$contact = $stmt->fetch();
-
-if (!$contact) {
-    $uid         = 'sms_' . $phone;
-    $displayName = $name ?: '+' . $phone;
-    // uid might conflict — append suffix if needed
-    try {
-        $pdo->prepare('INSERT INTO contacts (uid, name, sms_number, ip) VALUES (?, ?, ?, NULL)')
-            ->execute([$uid, $displayName, $phone]);
-    } catch (\PDOException $e) {
-        if ($e->getCode() === '23000') {
-            $uid = 'sms_' . $phone . '_' . time();
-            $pdo->prepare('INSERT INTO contacts (uid, name, sms_number, ip) VALUES (?, ?, ?, NULL)')
-                ->execute([$uid, $displayName, $phone]);
-        } else {
-            throw $e;
-        }
-    }
-    $contactId = (int)$pdo->lastInsertId();
-} else {
-    $contactId = (int)$contact['id'];
-}
+// Get-or-create contact — cross-channel dedup
+$contact   = find_or_create_contact($pdo, $phone, $name ?: null, 'sms');
+$contactId = (int)$contact['id'];
 
 // Create conversation as 'pending' — hidden from dashboard until the contact replies
 $pdo->prepare("INSERT INTO conversations (contact_id, channel, sms_account_id, status, assigned_agent_id, bot_state, unread_agent)

@@ -542,6 +542,89 @@ function is_within_business_hours(): bool {
     return ($now >= $todayHours['open'] && $now <= $todayHours['close']);
 }
 
+// ── Cross-channel contact lookup / dedup ─────────────────────
+/**
+ * Find an existing contact by phone number across ALL number fields
+ * (whatsapp_number, sms_number, phone), normalising +44 / 0 / bare variants.
+ * If found, stamps the channel-specific field if it wasn't set.
+ * If not found, inserts a new contact and returns it.
+ *
+ * @param string $number  Raw number as received (e.g. "447385297011" or "+447385297011")
+ * @param string|null $name  Display name (used only on creation / if existing has none)
+ * @param string $channel  'whatsapp' | 'sms'
+ */
+function find_or_create_contact(PDO $pdo, string $number, ?string $name, string $channel): array {
+    $stripped   = ltrim(preg_replace('/\s+/', '', $number), '+');   // 447385297011
+    $plus       = '+' . $stripped;                                   // +447385297011
+    $uk_local   = preg_replace('/^44/', '0', $stripped);            // 07385297011
+
+    $stmt = $pdo->prepare("
+        SELECT * FROM contacts
+        WHERE whatsapp_number IN (?,?,?)
+           OR sms_number       IN (?,?,?)
+           OR phone            IN (?,?,?)
+        ORDER BY id ASC
+        LIMIT 1
+    ");
+    $stmt->execute([$stripped, $plus, $uk_local,
+                    $stripped, $plus, $uk_local,
+                    $stripped, $plus, $uk_local]);
+    $contact = $stmt->fetch();
+
+    if ($contact) {
+        $contactId = (int)$contact['id'];
+        $updates   = [];
+        $params    = [];
+
+        if ($channel === 'whatsapp' && !$contact['whatsapp_number']) {
+            $updates[] = 'whatsapp_number = ?';
+            $params[]  = $stripped;
+        }
+        if ($channel === 'sms' && !$contact['sms_number']) {
+            $updates[] = 'sms_number = ?';
+            $params[]  = $stripped;
+        }
+        if ($name && (!$contact['name'] || $contact['name'] === $plus || $contact['name'] === '+' . $stripped)) {
+            $updates[] = 'name = ?';
+            $params[]  = $name;
+        }
+        if ($updates) {
+            $params[] = $contactId;
+            $pdo->prepare('UPDATE contacts SET ' . implode(', ', $updates) . ' WHERE id = ?')->execute($params);
+        }
+        $stmt2 = $pdo->prepare('SELECT * FROM contacts WHERE id = ?');
+        $stmt2->execute([$contactId]);
+        return $stmt2->fetch();
+    }
+
+    // Create new contact
+    $displayName = $name ?: $plus;
+    $uid = $channel . '_' . $stripped;
+    try {
+        if ($channel === 'whatsapp') {
+            $pdo->prepare('INSERT INTO contacts (uid, name, whatsapp_number, ip) VALUES (?, ?, ?, NULL)')
+                ->execute([$uid, $displayName, $stripped]);
+        } else {
+            $pdo->prepare('INSERT INTO contacts (uid, name, sms_number, phone, ip) VALUES (?, ?, ?, ?, NULL)')
+                ->execute([$uid, $displayName, $stripped, $plus]);
+        }
+    } catch (\PDOException $e) {
+        if ($e->getCode() === '23000') {
+            $uid = $channel . '_' . $stripped . '_' . time();
+            if ($channel === 'whatsapp') {
+                $pdo->prepare('INSERT INTO contacts (uid, name, whatsapp_number, ip) VALUES (?, ?, ?, NULL)')
+                    ->execute([$uid, $displayName, $stripped]);
+            } else {
+                $pdo->prepare('INSERT INTO contacts (uid, name, sms_number, phone, ip) VALUES (?, ?, ?, ?, NULL)')
+                    ->execute([$uid, $displayName, $stripped, $plus]);
+            }
+        } else { throw $e; }
+    }
+    $stmt3 = $pdo->prepare('SELECT * FROM contacts WHERE id = ?');
+    $stmt3->execute([$pdo->lastInsertId()]);
+    return $stmt3->fetch();
+}
+
 // ── Check if any agent is online ─────────────────────────────
 function any_agent_online(): bool {
     $stmt = db()->prepare("SELECT COUNT(*) FROM agents WHERE status = 'online'");
