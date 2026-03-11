@@ -128,6 +128,55 @@ createApp({
         const notifApiSupported = 'Notification' in window;
         const notifPermission   = ref(notifApiSupported ? Notification.permission : 'denied');
 
+        // ── Contacts ──────────────────────────────────────────
+        const contactsList        = ref([]);
+        const contactsTotal       = ref(0);
+        const contactsPages       = ref(1);
+        const contactsPage        = ref(1);
+        const contactsSearch      = ref('');
+        const contactsLoading     = ref(false);
+        const selectedContact     = ref(null);
+        const selectedContactDetail = ref(null); // full record with history
+        const selectedContactLoading = ref(false);
+        let contactsDebounceTimer = null;
+
+        async function loadContactsList(resetPage = false) {
+            if (resetPage) contactsPage.value = 1;
+            contactsLoading.value = true;
+            const params = new URLSearchParams({
+                page:   contactsPage.value,
+                limit:  25,
+                search: contactsSearch.value,
+            });
+            const res = await api('GET', `agent/contacts_list.php?${params}`);
+            contactsLoading.value = false;
+            if (res.success) {
+                contactsList.value  = res.contacts;
+                contactsTotal.value = res.total;
+                contactsPages.value = res.pages;
+            }
+        }
+
+        async function openContactDetail(contact) {
+            selectedContact.value       = contact;
+            selectedContactDetail.value = null;
+            selectedContactLoading.value = true;
+            const res = await api('GET', `agent/contacts.php?contact_id=${contact.id}`);
+            selectedContactLoading.value = false;
+            if (res.success) selectedContactDetail.value = res;
+        }
+
+        function debouncedContactsSearch() {
+            clearTimeout(contactsDebounceTimer);
+            contactsDebounceTimer = setTimeout(() => loadContactsList(true), 350);
+        }
+
+        async function openConvFromContacts(convId) {
+            switchView('conversations');
+            await nextTick();
+            openConversationById(convId);
+        }
+
         const departments = ref([]);
         const activeDepts = computed(() => departments.value.filter(d => d.is_active == 1));
         const agents      = ref([]);
@@ -135,6 +184,7 @@ createApp({
 
         // ── Bitrix24 sidebar state ────────────────────────────
         const bitrix24Data      = ref(null);
+        const bitrix24Url       = ref(null);
         const bitrix24Fields    = ref([]);
         const bitrix24Enabled   = ref(false);
         const bitrix24SyncedAt  = ref(null);
@@ -146,7 +196,7 @@ createApp({
         const historyOpen        = ref(false);
 
         // ── Bitrix24 admin state ──────────────────────────────
-        const bitrix24Settings       = reactive({ enabled: false, webhook_url: '', cache_ttl: 3600 });
+        const bitrix24Settings       = reactive({ enabled: false, webhook_url: '', cache_ttl: 3600, chat_link_field: '' });
         const bitrix24AvailableFields = ref([]);
         const bitrix24FieldConfig    = ref([]);
         const bitrix24FieldsLoading  = ref(false);
@@ -203,6 +253,7 @@ createApp({
                 contactHistory.value    = cRes.history || [];
                 bitrix24Enabled.value   = !!cRes.bitrix24_enabled;
                 bitrix24Data.value      = cRes.bitrix24 || null;
+                bitrix24Url.value       = cRes.bitrix24_url || null;
                 bitrix24Fields.value    = cRes.bitrix24_fields || [];
                 bitrix24SyncedAt.value  = cRes.bitrix24_synced_at || null;
                 // Populate contact edit form (phone falls back to whatsapp_number)
@@ -1223,6 +1274,7 @@ createApp({
             contactEditLoading.value = false;
             if (res.success) {
                 if (res.bitrix24)       bitrix24Data.value     = res.bitrix24;
+                if (res.bitrix24_url)   bitrix24Url.value      = res.bitrix24_url;
                 if (res.bitrix24_synced_at) bitrix24SyncedAt.value = res.bitrix24_synced_at;
                 toast('Contact details saved', 'success');
             } else {
@@ -1238,6 +1290,7 @@ createApp({
             bitrix24Loading.value = false;
             if (res.success) {
                 bitrix24Data.value     = res.bitrix24_data || null;
+                bitrix24Url.value      = res.bitrix24_url || null;
                 bitrix24SyncedAt.value = res.synced_at || null;
                 if (!silent) toast(res.found ? 'CRM record refreshed' : 'No CRM record found', res.found ? 'success' : 'info');
             } else {
@@ -1248,18 +1301,20 @@ createApp({
         async function loadBitrix24Settings() {
             const res = await api('GET', 'admin/bitrix.php?action=credentials');
             if (res.success) {
-                bitrix24Settings.enabled     = res.enabled;
-                bitrix24Settings.webhook_url = res.webhook_url;
-                bitrix24Settings.cache_ttl   = res.cache_ttl;
+                bitrix24Settings.enabled          = res.enabled;
+                bitrix24Settings.webhook_url      = res.webhook_url;
+                bitrix24Settings.cache_ttl        = res.cache_ttl;
+                bitrix24Settings.chat_link_field  = res.chat_link_field || '';
             }
             await loadBitrix24FieldConfig();
         }
 
         async function saveBitrix24Credentials() {
             const res = await api('POST', 'admin/bitrix.php?action=credentials', {
-                enabled:     bitrix24Settings.enabled ? 1 : 0,
-                webhook_url: bitrix24Settings.webhook_url,
-                cache_ttl:   bitrix24Settings.cache_ttl,
+                enabled:          bitrix24Settings.enabled ? 1 : 0,
+                webhook_url:      bitrix24Settings.webhook_url,
+                cache_ttl:        bitrix24Settings.cache_ttl,
+                chat_link_field:  bitrix24Settings.chat_link_field,
             });
             if (res.success) toast('Bitrix24 credentials saved', 'success');
             else toast(res.error || 'Save failed', 'error');
@@ -1290,6 +1345,26 @@ createApp({
             if (res.success) bitrix24FieldConfig.value = res.fields || [];
         }
 
+        // Writable fields for the Chat Link field picker
+        const b24WritableFields     = ref([]);
+        const b24WritableLoading    = ref(false);
+        const b24BackfillLoading    = ref(false);
+
+        async function loadB24WritableFields() {
+            b24WritableLoading.value = true;
+            const res = await api('GET', 'admin/bitrix.php?action=writable_fields');
+            b24WritableLoading.value = false;
+            if (res.success) b24WritableFields.value = res.fields || [];
+        }
+
+        async function writeChatLinksToAll() {
+            b24BackfillLoading.value = true;
+            const res = await api('POST', 'admin/bitrix.php?action=write_chat_links');
+            b24BackfillLoading.value = false;
+            if (res.success) toast(`Done — ${res.written} updated, ${res.failed} skipped`, res.failed ? 'info' : 'success');
+            else toast(res.error || 'Failed', 'error');
+        }
+
         async function saveBitrix24FieldConfig() {
             const fields = (bitrix24AvailableFields.value.length ? bitrix24AvailableFields.value : bitrix24FieldConfig.value)
                 .map((f, i) => ({ ...f, sort_order: i }));
@@ -1316,9 +1391,10 @@ createApp({
             if (v === 'roles')       loadRoles();
             if (v === 'canned')      loadCanned();
             if (v === 'sms')         { loadSmsConversations(); if (!smsAccounts.value.length) loadSmsAccounts(); }
-            if (v === 'settings')    { loadSettings(); loadWaAccounts(); loadSmsAccounts(); loadBitrix24Settings(); }
+            if (v === 'settings')    { loadSettings(); loadWaAccounts(); loadSmsAccounts(); loadBitrix24Settings(); loadB24WritableFields(); }
             if (v === 'smslog')      loadSmsLog();
             if (v === 'analytics')   loadAnalytics();
+            if (v === 'contacts')    { selectedContact.value = null; selectedContactDetail.value = null; loadContactsList(true); }
         }
 
         // ── Filter ────────────────────────────────────────────
@@ -1497,7 +1573,21 @@ createApp({
         }
 
         onMounted(() => {
-            if (auth.token) init();
+            if (auth.token) {
+                init();
+                // Deep-link: ?contact=N → open Contacts view and select that contact
+                const urlParams = new URLSearchParams(window.location.search);
+                const contactParam = parseInt(urlParams.get('contact') || '0');
+                if (contactParam) {
+                    nextTick(async () => {
+                        switchView('contacts');
+                        await nextTick();
+                        // Load list, then find and open the contact
+                        const res = await api('GET', `agent/contacts.php?contact_id=${contactParam}`);
+                        if (res.success) openContactDetail({ id: contactParam, ...res.contact });
+                    });
+                }
+            }
         });
 
         onUnmounted(() => {
@@ -1559,12 +1649,17 @@ createApp({
             // Contact edit
             contactEditForm, contactEditLoading, saveContactDetails, historyOpen,
             // Bitrix24
-            bitrix24Data, bitrix24Fields, bitrix24Enabled, bitrix24SyncedAt, bitrix24Loading,
+            bitrix24Data, bitrix24Url, bitrix24Fields, bitrix24Enabled, bitrix24SyncedAt, bitrix24Loading,
             bitrix24Settings, bitrix24AvailableFields, bitrix24FieldConfig, bitrix24FieldsLoading,
             refreshBitrix24, loadBitrix24Settings, saveBitrix24Credentials,
             loadBitrix24Fields, loadBitrix24FieldConfig, saveBitrix24FieldConfig,
+            b24WritableFields, b24WritableLoading, b24BackfillLoading, loadB24WritableFields, writeChatLinksToAll,
             // Notification preferences
             notifPrefs, saveNotifPrefs, requestBrowserPermission, notifApiSupported, notifPermission, playSound,
+            // Contacts
+            contactsList, contactsTotal, contactsPages, contactsPage, contactsSearch, contactsLoading,
+            selectedContact, selectedContactDetail, selectedContactLoading,
+            loadContactsList, openContactDetail, debouncedContactsSearch, openConvFromContacts,
             // Access / view / filter / take
             canAccess, canReply, takeConversation,
             rankLabel, rankIcon, roleDescription, switchView, setFilter,

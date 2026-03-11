@@ -38,14 +38,18 @@ try {
     json_error($e->getMessage(), 502);
 }
 bitrix24_cache_contact((int)$contact['id'], $result);
+if ($result) bitrix24_write_chat_link($result, (int)$contact['id']);
 
 // Fetch updated row
 $stmt = $pdo->prepare('SELECT bitrix24_data, bitrix24_synced_at FROM contacts WHERE id = ?');
 $stmt->execute([$contact['id']]);
 $row = $stmt->fetch();
 
+$b24Data = $row['bitrix24_data'] ? json_decode($row['bitrix24_data'], true) : null;
+
 json_success([
     'found'          => $result !== null,
-    'bitrix24_data'  => $row['bitrix24_data'] ? json_decode($row['bitrix24_data'], true) : null,
+    'bitrix24_data'  => $b24Data,
+    'bitrix24_url'   => bitrix24_record_url($b24Data),
     'synced_at'      => $row['bitrix24_synced_at'],
 ]);

@@ -52,6 +52,7 @@ $b24data  = $contact['bitrix24_data'] ? json_decode($contact['bitrix24_data'], t
 if ($doLookup && get_setting('bitrix24_enabled')) {
     $result = bitrix24_lookup($contact['phone'], $contact['email']);
     bitrix24_cache_contact($contactId, $result);
+    if ($result) bitrix24_write_chat_link($result, $contactId);
     $stmt->execute([$contactId]);
     $contact = $stmt->fetch();
     $b24data = $contact['bitrix24_data'] ? json_decode($contact['bitrix24_data'], true) : null;
@@ -60,5 +61,6 @@ if ($doLookup && get_setting('bitrix24_enabled')) {
 json_success([
     'contact'        => $contact,
     'bitrix24'       => $b24data,
+    'bitrix24_url'   => bitrix24_record_url($b24data),
     'bitrix24_synced_at' => $contact['bitrix24_synced_at'] ?? null,
 ]);

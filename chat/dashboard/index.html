@@ -75,6 +75,12 @@
                 </svg>
             </button>
 
+            <!-- Contacts -->
+            <button class="icon-btn" :class="{active: view==='contacts'}"
+                    @click="switchView('contacts')" v-if="canAccess('agent')" title="Contacts">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            </button>
+
             <!-- Canned -->
             <button class="icon-btn" :class="{active: view==='canned'}"
                     @click="switchView('canned')" v-if="canAccess('agent')" title="Canned Responses">
@@ -767,6 +773,12 @@
                                 <div style="font-size:.7rem;color:var(--text-3);margin-top:6px" v-if="bitrix24SyncedAt">
                                     Last synced {{ timeAgo(bitrix24SyncedAt) }} ago
                                 </div>
+                                <a v-if="bitrix24Url" :href="bitrix24Url" target="_blank" rel="noopener"
+                                   style="display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:.75rem;font-weight:600;color:var(--blue);text-decoration:none;padding:3px 8px;border:1px solid var(--blue);border-radius:5px;transition:background .12s"
+                                   onmouseover="this.style.background='var(--blue-muted)'" onmouseout="this.style.background='transparent'">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                                    View in Bitrix24
+                                </a>
                             </div>
                             <div v-else style="font-size:.78rem;color:var(--text-3);padding:4px 0">
                                 No CRM record found.
@@ -1450,8 +1462,28 @@
                             <input class="f-input" type="text" v-model="bitrix24Settings.webhook_url" placeholder="https://your-domain.bitrix24.com/rest/1/xxxxx/">
                             <div class="f-hint">Paste your Bitrix24 REST webhook URL. The webhook user must have CRM read permissions including Smart Process (SPA) access for entity types 148 (CLIs) and 156 (Sites).</div>
                         </div>
-                        <div style="margin-bottom:20px">
+                        <div class="f-group">
+                            <label class="f-label">Contact Chat Link — Field</label>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <select class="f-select" v-model="bitrix24Settings.chat_link_field" style="flex:1">
+                                    <option value="">— Disabled —</option>
+                                    <option v-for="f in b24WritableFields.filter(f=>!['opened','categoryId','webformId','contactId','contactIds','contacts','companyId','mycompanyId','assignedById'].includes(f.key))" :key="f.key" :value="f.key">
+                                        {{ f.label }} ({{ f.key }})
+                                    </option>
+                                </select>
+                                <button class="btn btn-ghost btn-sm" @click="loadB24WritableFields" :disabled="b24WritableLoading" style="white-space:nowrap">
+                                    {{ b24WritableLoading ? '…' : '↻ Load fields' }}
+                                </button>
+                            </div>
+                            <div class="f-hint">When a contact is synced, this field on their <strong>Site record</strong> in Bitrix24 will be set to a direct link to their profile in this dashboard. Select <strong>Chat Link</strong> from the dropdown. Leave blank to disable.</div>
+                        </div>
+                        <div style="margin-bottom:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                             <button class="btn btn-primary" @click="saveBitrix24Credentials">Save Credentials</button>
+                            <button class="btn btn-ghost" v-if="bitrix24Settings.chat_link_field"
+                                    @click="writeChatLinksToAll" :disabled="b24BackfillLoading"
+                                    title="Write the chat link to all existing Bitrix24 contacts in one go">
+                                {{ b24BackfillLoading ? 'Writing…' : '🔗 Write link to all existing contacts' }}
+                            </button>
                         </div>
 
                         <!-- Field configuration table -->
@@ -1541,6 +1573,179 @@
         </template>
 
         <!-- ════════ NOTIFICATIONS VIEW ════════ -->
+        <!-- ════════ CONTACTS ════════ -->
+        <template v-if="view==='contacts'">
+            <div class="contacts-layout">
+
+                <!-- ── Left: Contact List ── -->
+                <div class="contacts-list-panel">
+                    <div class="contacts-list-hd">
+                        <div class="contacts-list-title">Contacts <span class="contacts-count" v-if="contactsTotal">{{ contactsTotal }}</span></div>
+                        <div class="contacts-search-wrap">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                            <input class="contacts-search" type="text" placeholder="Search name, email, phone…"
+                                   v-model="contactsSearch" @input="debouncedContactsSearch">
+                        </div>
+                    </div>
+
+                    <div class="contacts-list-body">
+                        <div v-if="contactsLoading && !contactsList.length" class="contacts-empty">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="opacity:.3;animation:spin 1s linear infinite"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                        </div>
+                        <div v-else-if="!contactsList.length" class="contacts-empty">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor" style="opacity:.18;margin-bottom:8px"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                            <div>No contacts found</div>
+                        </div>
+                        <div v-else
+                             v-for="c in contactsList" :key="c.id"
+                             class="contact-row" :class="{active: selectedContact && selectedContact.id===c.id}"
+                             @click="openContactDetail(c)">
+                            <div class="contact-row-avatar" :style="{background: avatarColor(c.name||c.email||'?')}">
+                                {{ initials(c.name || c.email || '?') }}
+                            </div>
+                            <div class="contact-row-info">
+                                <div class="contact-row-name">{{ c.name || '(no name)' }}</div>
+                                <div class="contact-row-meta">
+                                    <span v-if="c.email" style="margin-right:6px">{{ c.email }}</span>
+                                    <span v-if="c.phone" style="color:var(--text-muted)">{{ c.phone }}</span>
+                                </div>
+                                <div class="contact-row-channels" v-if="c.conv_total">
+                                    <span v-if="c.conv_widget>0" class="ch-badge ch-widget">💬 {{ c.conv_widget }}</span>
+                                    <span v-if="c.conv_wa>0"     class="ch-badge ch-wa">📱 {{ c.conv_wa }}</span>
+                                    <span v-if="c.conv_sms>0"    class="ch-badge ch-sms">✉ {{ c.conv_sms }}</span>
+                                </div>
+                            </div>
+                            <div class="contact-row-time" v-if="c.last_activity">{{ timeAgo(c.last_activity) }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="contacts-pagination" v-if="contactsPages > 1">
+                        <button class="btn btn-ghost btn-sm" :disabled="contactsPage<=1"
+                                @click="contactsPage--; loadContactsList()">‹ Prev</button>
+                        <span style="font-size:.8rem;color:var(--text-muted)">{{ contactsPage }} / {{ contactsPages }}</span>
+                        <button class="btn btn-ghost btn-sm" :disabled="contactsPage>=contactsPages"
+                                @click="contactsPage++; loadContactsList()">Next ›</button>
+                    </div>
+                </div>
+
+                <!-- ── Right: Contact Detail ── -->
+                <div class="contacts-detail-panel">
+                    <!-- Empty state -->
+                    <div class="contacts-detail-empty" v-if="!selectedContact">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" style="opacity:.13;margin-bottom:12px"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                        <div style="font-size:.9rem;color:var(--text-muted)">Select a contact to view details</div>
+                    </div>
+
+                    <!-- Loading -->
+                    <div class="contacts-detail-empty" v-else-if="selectedContactLoading">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style="opacity:.3;animation:spin 1s linear infinite"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                    </div>
+
+                    <!-- Detail -->
+                    <template v-else-if="selectedContactDetail">
+                        <div class="contacts-detail-hd">
+                            <div class="contacts-detail-avatar" :style="{background: avatarColor(selectedContact.name||selectedContact.email||'?')}">
+                                {{ initials(selectedContact.name || selectedContact.email || '?') }}
+                            </div>
+                            <div style="flex:1;min-width:0">
+                                <div class="contacts-detail-name">{{ selectedContact.name || '(no name)' }}</div>
+                                <div class="contacts-detail-sub" v-if="selectedContact.email">{{ selectedContact.email }}</div>
+                            </div>
+                            <a v-if="selectedContactDetail.bitrix24_url" :href="selectedContactDetail.bitrix24_url"
+                               target="_blank" rel="noopener"
+                               style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:6px;border:1px solid var(--blue);color:var(--blue);font-size:.75rem;font-weight:600;text-decoration:none;flex-shrink:0;transition:background .12s"
+                               onmouseover="this.style.background='var(--blue-muted)'" onmouseout="this.style.background='transparent'">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                                Bitrix24
+                            </a>
+                        </div>
+
+                        <div class="contacts-detail-body">
+                            <!-- Info card -->
+                            <div class="cd-section">
+                                <div class="cd-section-title">Contact Info</div>
+                                <div class="cd-fields">
+                                    <div class="cd-field" v-if="selectedContactDetail.contact.name">
+                                        <div class="cd-field-label">Name</div>
+                                        <div class="cd-field-value">{{ selectedContactDetail.contact.name }}</div>
+                                    </div>
+                                    <div class="cd-field" v-if="selectedContactDetail.contact.email">
+                                        <div class="cd-field-label">Email</div>
+                                        <div class="cd-field-value">{{ selectedContactDetail.contact.email }}</div>
+                                    </div>
+                                    <div class="cd-field" v-if="selectedContactDetail.contact.phone">
+                                        <div class="cd-field-label">Phone</div>
+                                        <div class="cd-field-value">{{ selectedContactDetail.contact.phone }}</div>
+                                    </div>
+                                    <div class="cd-field" v-if="selectedContactDetail.contact.whatsapp_number">
+                                        <div class="cd-field-label">WhatsApp</div>
+                                        <div class="cd-field-value">{{ selectedContactDetail.contact.whatsapp_number }}</div>
+                                    </div>
+                                    <div class="cd-field" v-if="selectedContactDetail.contact.sms_number">
+                                        <div class="cd-field-label">SMS Number</div>
+                                        <div class="cd-field-value">{{ selectedContactDetail.contact.sms_number }}</div>
+                                    </div>
+                                    <div class="cd-field" v-if="selectedContactDetail.contact.country">
+                                        <div class="cd-field-label">Country</div>
+                                        <div class="cd-field-value">{{ selectedContactDetail.contact.country }}</div>
+                                    </div>
+                                    <div class="cd-field" v-if="selectedContactDetail.contact.ip">
+                                        <div class="cd-field-label">IP</div>
+                                        <div class="cd-field-value" style="font-family:monospace;font-size:.8rem">{{ selectedContactDetail.contact.ip }}</div>
+                                    </div>
+                                    <div class="cd-field" v-if="selectedContactDetail.contact.browser">
+                                        <div class="cd-field-label">Browser</div>
+                                        <div class="cd-field-value">{{ selectedContactDetail.contact.browser }}</div>
+                                    </div>
+                                    <div class="cd-field" v-if="selectedContactDetail.contact.os">
+                                        <div class="cd-field-label">OS</div>
+                                        <div class="cd-field-value">{{ selectedContactDetail.contact.os }}</div>
+                                    </div>
+                                    <div class="cd-field">
+                                        <div class="cd-field-label">First seen</div>
+                                        <div class="cd-field-value">{{ formatDate(selectedContactDetail.contact.created_at) }}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Conversation history -->
+                            <div class="cd-section">
+                                <div class="cd-section-title">
+                                    Conversation History
+                                    <span class="contacts-count" style="margin-left:6px">{{ selectedContactDetail.history.length }}</span>
+                                </div>
+                                <div v-if="!selectedContactDetail.history.length" style="color:var(--text-muted);font-size:.82rem;padding:8px 0">No conversations yet</div>
+                                <div v-else class="cd-history-list">
+                                    <div v-for="h in selectedContactDetail.history" :key="h.id"
+                                         class="cd-history-item"
+                                         @click="openConvFromContacts(h.id)">
+                                        <div class="cd-history-top">
+                                            <span class="cd-ch-badge" :class="'cd-ch-'+h.channel">
+                                                <template v-if="h.channel==='widget'">💬 Widget</template>
+                                                <template v-else-if="h.channel==='whatsapp'">📱 WhatsApp</template>
+                                                <template v-else-if="h.channel==='sms'">✉ SMS</template>
+                                                <template v-else>{{ h.channel }}</template>
+                                            </span>
+                                            <span :class="`status-badge status-${h.status}`" style="font-size:.65rem">{{ h.status }}</span>
+                                            <span style="margin-left:auto;font-size:.72rem;color:var(--text-muted)">{{ timeAgo(h.updated_at) }}</span>
+                                        </div>
+                                        <div class="cd-history-msg" v-if="h.last_message">{{ truncate(h.last_message, 80) }}</div>
+                                        <div class="cd-history-meta">
+                                            <span v-if="h.dept_name" style="font-size:.7rem;color:var(--text-muted)">{{ h.dept_name }}</span>
+                                            <span v-if="h.agent_name" style="font-size:.7rem;color:var(--text-muted)">· {{ h.agent_name }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+            </div>
+        </template>
+
+        <!-- ════════ NOTIFICATIONS ════════ -->
         <template v-if="view==='notifications'">
             <div class="admin-wrap">
                 <div class="page-header">

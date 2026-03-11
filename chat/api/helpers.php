@@ -609,19 +609,80 @@ function bitrix24_lookup(?string $phone, ?string $email): ?array {
                 }
             }
 
+            $site['_entity_type_id'] = 156;
+            $site['_cli_id']         = $cli['id'] ?? $cli['ID'] ?? null;
             return $site;
         }
     }
 
     // No site linked — return CLI record as-is
+    $cli['_entity_type_id'] = 148;
     return $cli;
 }
 
 function bitrix24_cache_contact(int $contactId, ?array $result): void {
     $json = $result ? json_encode($result, JSON_UNESCAPED_UNICODE) : null;
-    $b24id = $result['ID'] ?? null;
+    $b24id = $result['ID'] ?? $result['id'] ?? null;
     db()->prepare('UPDATE contacts SET bitrix24_data = ?, bitrix24_id = ?, bitrix24_synced_at = NOW() WHERE id = ?')
         ->execute([$json, $b24id, $contactId]);
+}
+
+/**
+ * Build a direct link to a Bitrix24 CRM record using the stored webhook URL
+ * and the entity type ID embedded in the cached data.
+ */
+function bitrix24_record_url(?array $data): ?string {
+    if (empty($data)) return null;
+    $id = $data['id'] ?? $data['ID'] ?? null;
+    if (!$id) return null;
+    $webhookUrl = get_setting('bitrix24_webhook_url');
+    if (!$webhookUrl) return null;
+    $parsed = parse_url($webhookUrl);
+    if (!$parsed || empty($parsed['host'])) return null;
+    $base = ($parsed['scheme'] ?? 'https') . '://' . $parsed['host'];
+    $entityTypeId = (int)($data['_entity_type_id'] ?? 148);
+    return "{$base}/crm/type/{$entityTypeId}/details/{$id}/";
+}
+
+/**
+ * Derive the dashboard base URL from the current request context.
+ * e.g. https://live.rcg.com/chat/api/agent/foo.php  →  https://live.rcg.com/chat/dashboard/
+ */
+function get_dashboard_url(): string {
+    $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host  = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $path  = preg_replace('#/api/.*$#', '', $_SERVER['SCRIPT_NAME'] ?? '');
+    return $proto . '://' . $host . $path . '/dashboard/';
+}
+
+/**
+ * Write the contact's dashboard URL back to the "Contact Chat Link" field
+ * on their Bitrix24 CLI record (type 148).
+ * Only runs when the bitrix24_chat_link_field setting is configured.
+ */
+function bitrix24_write_chat_link(?array $b24Data, int $ourContactId): void {
+    if (empty($b24Data)) return;
+    $fieldKey = get_setting('bitrix24_chat_link_field', '');
+    if (!$fieldKey) return;
+    $webhookUrl = get_setting('bitrix24_webhook_url');
+    if (!$webhookUrl) return;
+
+    // Write to the Site record (type 156)
+    // If lookup returned the site, its id IS the site id
+    // If lookup returned only a CLI (no site), skip — no site to write to
+    $entityTypeId = (int)($b24Data['_entity_type_id'] ?? 148);
+    if ($entityTypeId !== 156) return; // no site record for this contact
+
+    $itemId = $b24Data['id'] ?? $b24Data['ID'] ?? null;
+    if (!$itemId) return;
+
+    $chatUrl = get_dashboard_url() . '?contact=' . $ourContactId;
+    _b24_post($webhookUrl . 'crm.item.update', [
+        'entityTypeId' => 156,
+        'id'           => $itemId,
+        'fields'       => [$fieldKey => $chatUrl],
+    ]);
+    _b24_log("WRITE_CHAT_LINK contactId=$ourContactId siteId=$itemId field=$fieldKey url=$chatUrl");
 }
 
 function bitrix24_get_fields(): ?array {

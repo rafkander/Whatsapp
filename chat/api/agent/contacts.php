@@ -67,4 +67,5 @@ json_success([
     'bitrix24'         => $b24Data,
     'bitrix24_fields'  => $b24Fields,
     'bitrix24_synced_at' => $contact['bitrix24_synced_at'] ?? null,
+    'bitrix24_url'     => bitrix24_record_url($b24Data),
 ]);
