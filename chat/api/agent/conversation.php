@@ -18,6 +18,29 @@ if (!$convId) {
 
 $pdo = db();
 
+/**
+ * Check whether $agent has access to the given conversation.
+ * Supervisors and above see everything; agents/senior_agents only see
+ * conversations in their assigned departments or assigned to them.
+ */
+function agent_can_access_conv(array $agent, array $conv): bool {
+    if (role_level($agent['role']) >= role_level('supervisor')) {
+        return true;
+    }
+    // Assigned directly to this agent
+    if ((int)($conv['assigned_agent_id'] ?? 0) === (int)$agent['id']) {
+        return true;
+    }
+    // No department → visible to all agents (unassigned pool)
+    if (!$conv['dept_id']) {
+        return true;
+    }
+    // Check department membership
+    $deptStmt = db()->prepare('SELECT 1 FROM agent_departments WHERE agent_id = ? AND dept_id = ?');
+    $deptStmt->execute([$agent['id'], $conv['dept_id']]);
+    return (bool)$deptStmt->fetch();
+}
+
 function fetch_conv(int $id): ?array {
     $stmt = db()->prepare("
         SELECT c.*, co.name AS contact_name, co.email AS contact_email,
@@ -41,6 +64,7 @@ function fetch_conv(int $id): ?array {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $conv = fetch_conv($convId);
     if (!$conv) json_error('Not found', 404);
+    if (!agent_can_access_conv($agent, $conv)) json_error('Access denied', 403);
 
     // Mark as read
     $pdo->prepare('UPDATE conversations SET unread_agent = 0 WHERE id = ?')->execute([$convId]);
@@ -52,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $conv = fetch_conv($convId);
     if (!$conv) json_error('Not found', 404);
+    if (!agent_can_access_conv($agent, $conv)) json_error('Access denied', 403);
 
     $body    = request_body();
     $updates = [];

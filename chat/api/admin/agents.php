@@ -30,8 +30,17 @@ if ($method === 'POST') {
     if (!$name || !$email || !$pass) {
         json_error('Name, email and password are required');
     }
+    if (strlen($name) > 100) {
+        json_error('Name must be 100 characters or fewer');
+    }
+    if (strlen($email) > 254) {
+        json_error('Email address is too long');
+    }
     if (strlen($pass) < 8) {
         json_error('Password must be at least 8 characters');
+    }
+    if (strlen($pass) > 128) {
+        json_error('Password must be 128 characters or fewer');
     }
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         json_error('Invalid email address');
@@ -48,10 +57,11 @@ if ($method === 'POST') {
         $pdo->prepare('INSERT INTO agents (name, email, password_hash, role) VALUES (?, ?, ?, ?)')
             ->execute([$name, $email, $hash, $role]);
     } catch (PDOException $e) {
-        if (strpos($e->getMessage(), 'Duplicate') !== false) {
+        if ($e->getCode() === '23000' || strpos($e->getMessage(), 'Duplicate') !== false) {
             json_error('That email address is already in use');
         }
-        json_error('Database error: ' . $e->getMessage());
+        error_log('agents.php POST error: ' . $e->getMessage());
+        json_error('Database error', 500);
     }
 
     json_success(['id' => (int)$pdo->lastInsertId()], 201);

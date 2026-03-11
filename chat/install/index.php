@@ -7,6 +7,20 @@
 define('INSTALL_MODE', true);
 $configFile = dirname(__DIR__) . '/config.php';
 $schemaFile = __DIR__ . '/schema.sql';
+$lockFile   = __DIR__ . '/.installed';
+
+// Block re-installation if already completed
+if (file_exists($lockFile)) {
+    http_response_code(403);
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Forbidden</title>'
+        . '<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f1f5f9}'
+        . '.box{background:#fff;border-radius:12px;padding:40px;max-width:460px;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center}'
+        . 'h2{color:#dc2626;margin:0 0 12px}p{color:#64748b;line-height:1.6}</style></head>'
+        . '<body><div class="box"><h2>Already Installed</h2>'
+        . '<p>Installation has already been completed. For security, please delete or restrict access to the <code>/install/</code> directory.</p>'
+        . '</div></body></html>';
+    exit;
+}
 
 $step = isset($_GET['step']) ? (int)$_GET['step'] : 1;
 $error = '';
@@ -119,6 +133,9 @@ define('MAX_UPLOAD_MB', 10);
 PHP;
 
             file_put_contents($configFile, $configContent);
+
+            // Create lock file to prevent re-installation
+            @file_put_contents($lockFile, date('Y-m-d H:i:s'));
 
             $success = 'Installation complete!';
             $step = 3;

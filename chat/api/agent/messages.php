@@ -19,9 +19,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if (!$convId) json_error('Missing conv_id');
 
-    $stmt = $pdo->prepare('SELECT id FROM conversations WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT id, dept_id, assigned_agent_id FROM conversations WHERE id = ?');
     $stmt->execute([$convId]);
-    if (!$stmt->fetch()) json_error('Not found', 404);
+    $conv = $stmt->fetch();
+    if (!$conv) json_error('Not found', 404);
+
+    // Authorization: agents can only read messages in conversations they have access to
+    if (role_level($agent['role']) < role_level('supervisor')) {
+        if ((int)($conv['assigned_agent_id'] ?? 0) !== (int)$agent['id']) {
+            if ($conv['dept_id']) {
+                $deptStmt = $pdo->prepare('SELECT 1 FROM agent_departments WHERE agent_id = ? AND dept_id = ?');
+                $deptStmt->execute([$agent['id'], $conv['dept_id']]);
+                if (!$deptStmt->fetch()) json_error('Access denied', 403);
+            }
+        }
+    }
 
     $stmt = $pdo->prepare("
         SELECT m.id, m.sender_type, m.sender_id, m.content, m.type, m.file_url, m.file_name, m.file_size, m.read_at, m.created_at,

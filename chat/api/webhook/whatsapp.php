@@ -13,8 +13,8 @@ ini_set('error_log', __DIR__ . '/webhook_error.log');
 
 set_exception_handler(function (Throwable $e) {
     error_log('WA webhook uncaught: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-    http_response_code(200);
-    echo json_encode(['status' => 'error', 'msg' => $e->getMessage()]);
+    http_response_code(200); // Return 200 to Meta so it doesn't keep retrying
+    echo json_encode(['status' => 'error']);
     exit;
 });
 

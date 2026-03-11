@@ -60,8 +60,22 @@ if (!in_array($mime, $allowed, true)) {
     json_error('File type not allowed');
 }
 
-$ext      = pathinfo($file['name'], PATHINFO_EXTENSION);
-$filename = 'upload_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . strtolower($ext);
+// Derive extension from validated MIME type — never trust user-supplied filename extension
+$mimeExtMap = [
+    'image/jpeg'      => 'jpg',
+    'image/png'       => 'png',
+    'image/gif'       => 'gif',
+    'image/webp'      => 'webp',
+    'application/pdf' => 'pdf',
+    'text/plain'      => 'txt',
+    'application/msword' => 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+    'application/vnd.ms-excel' => 'xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+    'application/zip' => 'zip',
+];
+$ext      = $mimeExtMap[$mime] ?? 'bin';
+$filename = 'upload_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
 $dest     = UPLOAD_DIR . $filename;
 
 if (!move_uploaded_file($file['tmp_name'], $dest)) {

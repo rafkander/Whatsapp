@@ -13,6 +13,29 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_error('Method not allowed', 405);
 }
 
+// Rate limiting: max 10 attempts per IP per 15 minutes
+(function () {
+    $ip      = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $file    = sys_get_temp_dir() . '/login_rl_' . md5($ip) . '.json';
+    $now     = time();
+    $window  = 900;   // 15 minutes
+    $maxAttempts = 10;
+
+    $attempts = [];
+    if (file_exists($file)) {
+        $attempts = json_decode(@file_get_contents($file), true) ?? [];
+    }
+    // Keep only attempts within the window
+    $attempts = array_values(array_filter($attempts, fn($t) => ($now - $t) < $window));
+
+    if (count($attempts) >= $maxAttempts) {
+        json_error('Too many login attempts. Please try again later.', 429);
+    }
+
+    $attempts[] = $now;
+    @file_put_contents($file, json_encode($attempts), LOCK_EX);
+})();
+
 $body  = request_body();
 $email = trim($body['email'] ?? '');
 $pass  = $body['password'] ?? '';

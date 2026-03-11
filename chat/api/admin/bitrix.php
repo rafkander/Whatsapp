@@ -78,8 +78,17 @@ if ($method === 'POST') {
         $chatField = array_key_exists('chat_link_field', $body)
                      ? trim($body['chat_link_field']) : null;
 
-        // Allow empty string to clear the URL
-        if ($url !== '') set_setting('bitrix24_webhook_url', rtrim($url, '/') . '/');
+        // Allow empty string to clear the URL; otherwise validate it is a proper HTTPS URL
+        if ($url !== '') {
+            $parsed = filter_var($url, FILTER_VALIDATE_URL);
+            $scheme = parse_url($url, PHP_URL_SCHEME);
+            if (!$parsed || !in_array($scheme, ['https', 'http'], true)) {
+                json_error('Invalid webhook URL — must be a valid http(s) URL');
+            }
+            set_setting('bitrix24_webhook_url', rtrim($url, '/') . '/');
+        } else {
+            set_setting('bitrix24_webhook_url', '');
+        }
         if ($enabled !== null) set_setting('bitrix24_enabled', (string)$enabled);
         if ($ttl !== null)     set_setting('bitrix24_cache_ttl', (string)max(60, $ttl));
         if ($chatField !== null) set_setting('bitrix24_chat_link_field', $chatField);
@@ -110,7 +119,8 @@ if ($method === 'POST') {
             $pdo->commit();
         } catch (\Throwable $e) {
             $pdo->rollBack();
-            json_error('DB error: ' . $e->getMessage(), 500);
+            error_log('bitrix.php field_config error: ' . $e->getMessage());
+            json_error('Failed to save field configuration', 500);
         }
 
         json_success(['message' => 'Field configuration saved', 'count' => count($fields)]);
