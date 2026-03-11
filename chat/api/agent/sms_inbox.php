@@ -43,10 +43,6 @@ if ($code !== 200 || !$res) {
     json_success(['new_messages' => 0, 'error' => "Alfonica returned HTTP {$code}"]);
 }
 
-// Log raw response so we can inspect the actual field structure
-$logFile = dirname(__DIR__, 2) . '/sms_raw.log';
-file_put_contents($logFile, date('Y-m-d H:i:s') . " HTTP {$code}\n" . $res . "\n\n", FILE_APPEND);
-
 $payload  = json_decode($res, true);
 
 // Support both response shapes: data.data (paginated) and data (flat array)
