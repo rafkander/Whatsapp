@@ -1,0 +1,660 @@
+[2026-03-12 14:28:17] CALL=mobile_get_usage fields={"network":"Vodafone","cli":"447385297011"}
+[2026-03-12 14:28:17] CURL ERROR call=mobile_get_usage: Could not resolve host: api.giacom.com
+[2026-03-12 14:28:23] CALL=mobile_get_usage fields={"network":"Vodafone","cli":"447385297011"}
+[2026-03-12 14:28:23] CURL ERROR call=mobile_get_usage: Could not resolve host: api.giacom.com
+[2026-03-12 14:28:26] CALL=mobile_get_usage fields={"network":"EE","cli":"447385297011"}
+[2026-03-12 14:28:26] CURL ERROR call=mobile_get_usage: Could not resolve host: api.giacom.com
+[2026-03-12 14:28:28] CALL=mobile_get_usage fields={"network":"O2","cli":"447385297011"}
+[2026-03-12 14:28:28] CURL ERROR call=mobile_get_usage: Could not resolve host: api.giacom.com
+[2026-03-12 14:28:30] CALL=mobile_get_usage fields={"network":"Three","cli":"447385297011"}
+[2026-03-12 14:28:30] CURL ERROR call=mobile_get_usage: Could not resolve host: api.giacom.com
+[2026-03-12 14:28:32] CALL=mobile_get_usage fields={"network":"Vodafone","cli":"447385297011"}
+[2026-03-12 14:28:32] CURL ERROR call=mobile_get_usage: Could not resolve host: api.giacom.com
+[2026-03-12 14:30:40] REQUEST FAILED — missing credentials or API URL
+[2026-03-12 14:30:42] REQUEST FAILED — missing credentials or API URL
+[2026-03-12 14:30:42] REQUEST FAILED — missing credentials or API URL
+[2026-03-12 14:32:23] REQUEST FAILED — missing credentials or API URL
+[2026-03-12 14:32:28] REQUEST FAILED — missing credentials or API URL
+[2026-03-12 14:32:28] REQUEST FAILED — missing credentials or API URL
+[2026-03-12 14:32:29] REQUEST FAILED — missing credentials or API URL
+[2026-03-12 14:32:31] REQUEST FAILED — missing credentials or API URL
+[2026-03-12 14:38:40] CALL=mobile_check_billing_services id=081ceddf2223d9d03ec42dd8d75a7713 fields={"cli":"07385297011"}
+[2026-03-12 14:38:41] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="081ceddf2223d9d03ec42dd8d75a7713">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:38:41] CALL=mobile_number_attributes id=690d0eadb2e857b1934ac6d9309745f1 fields={"mobile-number":"07385297011"}
+[2026-03-12 14:38:44] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="690d0eadb2e857b1934ac6d9309745f1">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:38:44] CALL=mobile_bill_limits id=09eb93ea683885e42a137fe0d425603e fields={"mobile-number":"07385297011"}
+[2026-03-12 14:38:47] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="09eb93ea683885e42a137fe0d425603e">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:38:47] CALL=mobile_shared_bundles id=cf937f5712ef5af4989e83fe4613a95d fields={"show-inactive":"0"}
+[2026-03-12 14:38:50] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="cf937f5712ef5af4989e83fe4613a95d">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:39:28] CALL=mobile_check_billing_services id=fe4fb9163071b0e798801c9b07c40a46 fields={"cli":"07385297011"}
+[2026-03-12 14:39:31] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="fe4fb9163071b0e798801c9b07c40a46">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:39:31] CALL=mobile_number_attributes id=12c2a340d352fcaa50bb35e39d562ed6 fields={"mobile-number":"07385297011"}
+[2026-03-12 14:39:33] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="12c2a340d352fcaa50bb35e39d562ed6">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:39:33] CALL=mobile_bill_limits id=9d1d50a9e79293eea3503f07e7d5de6b fields={"mobile-number":"07385297011"}
+[2026-03-12 14:39:36] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="9d1d50a9e79293eea3503f07e7d5de6b">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:39:36] CALL=mobile_shared_bundles id=9f7a019af8763e0775b3d285294feba6 fields={"show-inactive":"0"}
+[2026-03-12 14:39:39] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="9f7a019af8763e0775b3d285294feba6">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:40:15] CALL=mobile_check_billing_services id=a67c3f9f1bc684119747b948eb20ac53 fields={"cli":"07385297011"}
+[2026-03-12 14:40:18] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="a67c3f9f1bc684119747b948eb20ac53">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:40:18] CALL=mobile_number_attributes id=a300c2b025b30ff0c894527317d6506d fields={"mobile-number":"07385297011"}
+[2026-03-12 14:40:20] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="a300c2b025b30ff0c894527317d6506d">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:40:20] CALL=mobile_bill_limits id=4e8ad420ace55aa8ffd0f7fbbc91a3c1 fields={"mobile-number":"07385297011"}
+[2026-03-12 14:40:21] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="4e8ad420ace55aa8ffd0f7fbbc91a3c1">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:40:21] CALL=mobile_shared_bundles id=f5ca15a841cebab25ed379543a1e1ed5 fields={"show-inactive":"0"}
+[2026-03-12 14:40:23] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="f5ca15a841cebab25ed379543a1e1ed5">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:41:37] CALL=mobile_check_billing_services id=37754822584e6fb8f60c880f46d48dc8 fields={"cli":"07385297011"}
+[2026-03-12 14:41:40] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="37754822584e6fb8f60c880f46d48dc8">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:41:40] BILLING_PARSED={"@id":"37754822584e6fb8f60c880f46d48dc8","status":{"@no":"10","@text":"Un-authorised user: maxi.rose@rcuk.com%3c\/a"},"http_code":500,"error":"Giacom API error (status 10)"}
+[2026-03-12 14:41:40] CALL=mobile_number_attributes id=f0976171410aa296d17f3f4e545dafc5 fields={"mobile-number":"07385297011"}
+[2026-03-12 14:41:43] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="f0976171410aa296d17f3f4e545dafc5">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:41:43] ATTRIBUTES_PARSED={"@id":"f0976171410aa296d17f3f4e545dafc5","status":{"@no":"10","@text":"Un-authorised user: maxi.rose@rcuk.com%3c\/a"},"http_code":500,"error":"Giacom API error (status 10)"}
+[2026-03-12 14:41:43] CALL=mobile_bill_limits id=3b9bf63415f21c3061abaae0a81d5db3 fields={"mobile-number":"07385297011"}
+[2026-03-12 14:41:46] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="3b9bf63415f21c3061abaae0a81d5db3">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:41:46] CALL=mobile_shared_bundles id=45efdecd303117927937d4cb89a9e333 fields={"show-inactive":"0"}
+[2026-03-12 14:41:47] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="45efdecd303117927937d4cb89a9e333">
+  <status no="10" text="Un-authorised user: maxi.rose@rcuk.com%3c/a"/>
+</Response>
+
+[2026-03-12 14:45:03] CALL=mobile_check_billing_services id=55b0234d7c84b8f83e72b027e0ec4577 fields={"cli":"07385297011"}
+[2026-03-12 14:45:08] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="55b0234d7c84b8f83e72b027e0ec4577">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-03-12 14:45:08] BILLING_PARSED={"@id":"55b0234d7c84b8f83e72b027e0ec4577","status":{"@no":"0"},"cli":"07385297011","product-id":"41843","services":{"@name":"services","block":[{"bolt-on-subtype":"","bolt-on-type":"","description":"Voda GPRS Data Profile","external-system-reference-id":"5085988","is-active":"1","name":"Voda GPRS Data Profile","rate-before-discount":"0","service-id":"18809","service-type":"data","start-date":"2026-01-01 00:00:00"},{"bolt-on-subtype":"","bolt-on-type":"","description":"DWVRC20 - Unlimited UK mins\/SMS\/20GB + TF + TP","external-system-reference-id":"5085988","is-active":"1","name":"DWVRC20 - Unlimited UK mins\/SMS\/20GB + TF + TP","rate-before-discount":"11","service-id":"25215","service-type":"voice","start-date":"2026-01-01 00:00:00"},{"bolt-on-subtype":"","bolt-on-type":"","description":"Voda GPRS Data Profile","end-date":"2025-12-31 00:00:00","external-system-reference-id":"5077555","is-active":"0","name":"Voda GPRS Data Profile","rate-before-discount":"0","service-id":"18809","service-type":"data","start-date":"2025-12-19 00:00:00"},{"bolt-on-subtype":"","bolt-on-type":"","description":"DWVRC20I - Unlimited UK mins\/SMS\/1GB + 500 IDD + TravelFree\/Plus + TP","end-date":"2025-12-31 00:00:00","external-system-reference-id":"5077555","is-active":"0","name":"DWVRC20I - Unlimited UK mins\/SMS\/1GB + 500 IDD + TravelFree\/Plus + TP","rate-before-discount":"9","service-id":"33089","service-type":"voice","start-date":"2025-12-19 00:00:00"},{"bolt-on-subtype":"","bolt-on-type":"","description":"O2_Data Profile 4G","end-date":"2025-12-19 00:00:00","external-system-reference-id":"5031824","is-active":"0","name":"O2_Data Profile 4G","rate-before-discount":"0","service-id":"22282","service-type":"data","start-date":"2025-11-11 00:00:00"},{"bolt-on-subtype":"","bolt-on-type":"","description":"ORC - RCUK 20GB (Apr.20)","end-date":"2025-12-19 00:00:00","external-system-reference-id":"5031824","is-active":"0","name":"ORC - RCUK 20GB (Apr.20)","rate-before-discount":"9","service-id":"25704","service-type":"voice","start-date":"2025-11-11 00:00:00"}]},"http_code":200}
+[2026-03-12 14:45:08] CALL=mobile_number_attributes id=4afe291161d1248958747ea68a0f26ec fields={"mobile-number":"07385297011"}
+[2026-03-12 14:45:12] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="4afe291161d1248958747ea68a0f26ec">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-03-12 14:45:12] ATTRIBUTES_PARSED={"@id":"4afe291161d1248958747ea68a0f26ec","status":{"@no":"0"},"grouped-attributes":{"@name":"grouped-attributes","block":[{"attributes":{"@name":"attributes","block":[{"attribute":{"@name":"attribute","editable":"1","id":"627","is-deleted":"0","label":"Name for resign","name":"name_for_resign","required":"0","type":"Text"},"value":"DWVRC20 - Unlimited UK mins\/SMS\/20GB + TF + TP"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_t","id":"141","label":"MMS Service","name":"MMS","position":"27","type":"Boolean"},"value":"1"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_l","id":"184","label":"Video Telephony","name":"VT","position":"34","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","id":"548","label":"Divert on Busy","name":"DIVERTBUSYSNB","position":"995","type":"Text"}},{"attribute":{"@name":"attribute","editable":"1","id":"549","label":"Divert Immediate","name":"DIVERTIMMEDIATESNB","position":"996","type":"Text"}},{"attribute":{"@name":"attribute","editable":"1","id":"551","label":"Divert No Reply","name":"DIVERTNOREPLYSNB","position":"997","type":"Text"}},{"attribute":{"@name":"attribute","editable":"1","id":"552","label":"Divert Not Reachable","name":"DIVERTNOTREACHABLESNB","position":"998","type":"Text"}},{"attribute":{"@name":"attribute","editable":"1","external-property":"facility_4G","id":"254","label":"4G Allowed","name":"4GBOLTON","type":"Boolean"},"value":"1"},{"attribute":{"@name":"attribute","editable":"1","external-property":"facility_5G","id":"636","label":"5G Service","name":"5GBOLTON","type":"Boolean"},"value":"1"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_O","id":"185","label":"Conference calling enabled","name":"CONFERENCE","type":"Boolean"},"value":"1"},{"attribute":{"@name":"attribute","editable":"1","external-property":"notification_opt_out","id":"145","label":"Data Notification Opt Out","name":"DNOO","type":"Boolean"},"value":"1"},{"attribute":{"@name":"attribute","editable":"0","external-property":"eu_roaming_profile","id":"703","label":"EU Roaming Profile","name":"EU Roaming Profile","type":"Text"},"value":"146"},{"attribute":{"@name":"attribute","editable":"0","external-property":"","id":"553","label":"Allow CLI Presentation","name":"Facility: CLI Presentation ALLOWED","type":"Boolean"}},{"attribute":{"@name":"attribute","editable":"0","external-property":"","id":"554","label":"Restrict CLI Presentation","name":"Facility: CLI WITHHELD PERMANENT","type":"Boolean"}},{"attribute":{"@name":"attribute","editable":"0","external-property":"data_capping_opt_out","id":"144","label":"Vodafone Data Capping Opt Out","name":"Facility: Data Capping Opt Out","type":"Boolean"},"value":"1"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_S","id":"186","label":"Voicemail","name":"MESSENGER","type":"Boolean"},"value":"1"},{"attribute":{"@name":"attribute","editable":"0","external-property":"suffix_v","id":"193","label":"Mobile exchange bronze","name":"SUFFIXES: v","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_3","id":"624","label":"Wifi Calling","name":"VOLTE0","type":"Boolean"},"value":"1"},{"attribute":{"@name":"attribute","editable":"1","external-property":"iphone_wifi_service","id":"143","label":"IPhone WIFI Service","name":"WIFI","type":"Boolean"},"value":"0"}]},"name":"Services"},{"attributes":{"@name":"attributes","block":[{"attribute":{"@name":"attribute","editable":"0","external-property":"","id":"89","label":"Network Status","name":"Status","position":"0","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","external-property":"connect_datetime","id":"113","label":"Connect Date\/Time","name":"Connect Date\/Time","position":"1","type":"Date"},"value":"2025-12-19T00:00:00"},{"attribute":{"@name":"attribute","editable":"0","external-property":"completion_datetime","id":"114","label":"Last Updated","name":"Completion Date\/Time","position":"2","type":"Date"},"value":"2026-01-05T00:00:00"},{"attribute":{"@name":"attribute","editable":"0","external-property":"sim_serial_number","id":"87","label":"Sim Number","name":"Sim Serial Number","position":"10","type":"Number"},"value":"89441000304857500678"},{"attribute":{"@name":"attribute","editable":"0","external-property":"puk_1_puk","id":"115","label":"PUK Code","name":"PUK (where PUK position = 1)","position":"11","type":"Number"},"value":"31906665"},{"attribute":{"@name":"attribute","editable":"0","external-property":"puk_2_puk","id":"116","label":"PUK 2 Code","name":"PUK (where PUK position = 2)","position":"12","type":"Number"},"value":"09230405"},{"attribute":{"@name":"attribute","editable":"0","external-property":"org_id","id":"139","label":"Groupworker Account \/ Corporate Id","name":"Orgid","position":"13","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","external-property":"price_plan","id":"112","label":"GPRS Tariff Network Name","name":"Price Plan","position":"15","type":"Text"},"value":"GPZ09"},{"attribute":{"@name":"attribute","editable":"0","external-property":"product_id","id":"111","label":"Voice Tariff Network Name","name":"Product Id","position":"16","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","external-property":"puk_1_pin","id":"163","label":"Puk Pin 1","name":"PUK PIn 1","position":"17","type":"Text"},"value":"0000"},{"attribute":{"@name":"attribute","editable":"0","external-property":"sp_code","id":"88","label":"SPID (Service Provider ID)","name":"SP Code","position":"21","type":"Text"},"value":"SY600000"}]},"name":"Main"},{"attributes":{"@name":"attributes","block":[{"attribute":{"@name":"attribute","editable":"1","external-property":"apn_WAP","id":"106","label":"WAP","name":"WAP","position":"3","type":"Boolean"},"value":"1"},{"attribute":{"@name":"attribute","editable":"1","external-property":"apn_INTERNET","id":"107","label":"Internet","name":"INTERNET","position":"4","type":"Boolean"},"value":"1"},{"attribute":{"@name":"attribute","editable":"1","external-property":"apn_ACCINT","id":"108","label":"Tethering","name":"ACCINT","position":"5","type":"Boolean"}},{"attribute":{"@name":"attribute","editable":"1","external-property":"apn_4","id":"109","label":"APN 4","name":"APN4","position":"6","type":"List"},"value":"EUINTERNET"},{"attribute":{"@name":"attribute","editable":"1","external-property":"apn_5","id":"110","label":"APN 5","name":"APN5","position":"7","type":"List"},"value":"0"}]},"name":"APNs"},{"attributes":{"@name":"attributes","block":[{"attribute":{"@name":"attribute","editable":"0","id":"117","label":"Data Number 1","name":"Additional MSISDN: (1)","position":"0","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"118","label":"Data Number 2","name":"Additional MSISDN: (2)","position":"1","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"126","label":"Data Number 10","name":"Additional MSISDN: (10)","position":"2","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"119","label":"Data Number 3","name":"Additional MSISDN: (3)","position":"3","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"120","label":"Data Number 4","name":"Additional MSISDN: (4)","position":"4","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"121","label":"Data Number 5","name":"Additional MSISDN: (5)","position":"5","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"122","label":"Data Number 6","name":"Additional MSISDN: (6)","position":"6","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"123","label":"Data Number 7","name":"Additional MSISDN: (7)","position":"7","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"124","label":"Data Number 8","name":"Additional MSISDN: (8)","position":"8","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"125","label":"Data Number 9","name":"Additional MSISDN: (9)","position":"9","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"137","label":"Fax Number","name":"Additional MSISDN:(Fax)","position":"10","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"127","label":"Data 1 Baud Rate","name":"Service Type: (Baud 1)","position":"11","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"136","label":"Data 10 Baud Rate","name":"Service Type: (Baud 10)","position":"12","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"128","label":"Data 2 Baud Rate","name":"Service Type: (Baud 2)","position":"13","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"129","label":"Data 3 Baud Rate","name":"Service Type: (Baud 3)","position":"14","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"130","label":"Data 4 Baud Rate","name":"Service Type: (Baud 4)","position":"15","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"131","label":"Data 5 Baud Rate","name":"Service Type: (Baud 5)","position":"16","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"132","label":"Data 6 Baud Rate","name":"Service Type: (Baud 6)","position":"17","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"133","label":"Data 7 Baud Rate","name":"Service Type: (Baud 7)","position":"18","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"134","label":"Data 8 Baud Rate","name":"Service Type: (Baud 8)","position":"19","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"135","label":"Data 9 Baud Rate","name":"Service Type: (Baud 9)","position":"20","type":"Text"}},{"attribute":{"@name":"attribute","editable":"0","id":"138","label":"Fax Number Baud Rate","name":"Service Type: (Fax)","position":"21","type":"Text"}}]},"name":"Data & Fax"},{"attributes":{"@name":"attributes","block":[{"attribute":{"@name":"attribute","editable":"1","external-property":"gprs_bar","id":"92","label":"GPRS","name":"GPRS","position":"14","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"gprs_roam_bar","id":"105","label":"GPRS Roaming","name":"GPRSROAM","position":"15","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_A","id":"90","label":"Admin","name":"ADMIN","position":"16","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_B","id":"95","label":"International and Premium Rate","name":"INTPREMIUM","position":"17","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_c","id":"93","label":"Incoming Calls","name":"INCOMING","position":"18","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_d","id":"96","label":"Premium Calls","name":"PREMIUM","position":"19","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_g","id":"103","label":"Incoming Roaming","name":"INWHENROAM","position":"20","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_h","id":"98","label":"Outgoing Roaming","name":"OUTWHENROAM","position":"21","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"0","external-property":"suffix_e","id":"142","label":"Content Control (Call Voda to remove)","name":"SUFFIXES: e","position":"22","type":"Boolean"},"value":"1"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_H","id":"91","label":"Stolen","name":"STOLEN","position":"23","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_N","id":"99","label":"Outgoing Calls - Finance Only","name":"OUTGOINGFINANCE","position":"24","type":"Boolean"}},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_u","id":"104","label":"Premium Text","name":"PRMSG","position":"25","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_o","id":"94","label":"Incoming SMS","name":"MTSMS","position":"26","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_m","id":"191","label":"Outgoing SMS","name":"MOSMS","position":"27","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_q","id":"97","label":"Outgoing MMS","name":"MOMMS","position":"28","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_r","id":"192","label":"Incoming MMS","name":"MTMMS","position":"29","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_W","id":"187","label":"Combined SMS Bar","name":"SMS","position":"30","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_Z","id":"102","label":"International Roaming","name":"ROAMING","position":"31","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_a","id":"189","label":"International outgoing calls","name":"INTERNATIONAL","position":"32","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_b","id":"190","label":"International Outgoing (ex to home Country)","name":"INTXHOME","position":"33","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_V","id":"188","label":"All call bars due to SIM cancellation","name":"SUFFIXES: V","position":"35","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_A","id":"594","label":"Admin - Finance Only","name":"ADMINFINANCE","type":"Boolean"}},{"attribute":{"@name":"attribute","editable":"0","external-property":"suffix_A","id":"599","label":"World Wide Cap","name":"AdminWORLDWIDE","type":"Boolean"}},{"attribute":{"@name":"attribute","editable":"0","id":"628","label":"Bill Limit Bar","name":"BILL_LIMIT","type":"Boolean"}},{"attribute":{"@name":"attribute","editable":"1","external-property":"mpay_bar","id":"601","label":"MPAY Bar ","name":"MPAY","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","external-property":"suffix_N","id":"593","label":"Outgoing Calls","name":"OUTGOING","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","id":"615","label":"Usage Autobar","name":"USAGEAUTO","type":"Boolean"},"value":"0"},{"attribute":{"@name":"attribute","editable":"1","id":"616","label":"Usage Autobar - Data Only","name":"USAGEAUTODATA","type":"Boolean"}}]},"name":"Bars"}]},"last-refresh-date":"2026-03-01T02:23:34","product-id":"41843","http_code":200}
+[2026-03-12 14:45:12] CALL=mobile_bill_limits id=be91da80d7fbec7c2e457f3159be9c65 fields={"mobile-number":"07385297011"}
+[2026-03-12 14:45:16] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="be91da80d7fbec7c2e457f3159be9c65">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-03-12 14:45:16] CALL=mobile_shared_bundles id=d884abe787feaa83c7acdff9063918bf fields={"show-inactive":"0"}
+[2026-03-12 14:45:28] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="d884abe787feaa83c7acdff9063918bf">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-03-12 14:48:12] CALL=mobile_check_billing_services id=ed0c9394ad08ec54e3c9a0f85986edd7 fields={"cli":"07385297011"}
+[2026-03-12 14:48:16] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="ed0c9394ad08ec54e3c9a0f85986edd7">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-03-12 14:48:16] CALL=mobile_number_attributes id=996cd6b70f7422e9331affe60d735310 fields={"mobile-number":"07385297011"}
+[2026-03-12 14:48:21] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="996cd6b70f7422e9331affe60d735310">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-03-12 14:48:21] CALL=mobile_bill_limits id=5f31a7b83f9d4b610d4026d8e1c2c1b9 fields={"mobile-number":"07385297011"}
+[2026-03-12 14:48:26] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="5f31a7b83f9d4b610d4026d8e1c2c1b9">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-03-12 14:48:26] CALL=mobile_shared_bundles id=36a0b31ac0c9b474539aeabc47aad5a8 fields={"show-inactive":"0"}
+[2026-03-12 14:48:29] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="36a0b31ac0c9b474539aeabc47aad5a8">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-03-12 14:51:15] CALL=mobile_check_billing_services id=fcb5a7a002d6fe72251a573bbed0388b fields={"cli":"07385297011"}
+[2026-03-12 14:51:19] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="fcb5a7a002d6fe72251a573bbed0388b">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-03-12 14:51:19] CALL=mobile_number_attributes id=fb01e7725f102e5b9d13d64818c70a2b fields={"mobile-number":"07385297011"}
+[2026-03-12 14:51:21] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="fb01e7725f102e5b9d13d64818c70a2b">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-03-12 14:51:21] CALL=mobile_bill_limits id=8e8f6fd1f4330489642cf68fd3492f03 fields={"mobile-number":"07385297011"}
+[2026-03-12 14:51:26] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="8e8f6fd1f4330489642cf68fd3492f03">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-03-12 14:51:26] CALL=mobile_shared_bundles id=8b65fe523bc0f88e46345ad2a2924993 fields={"show-inactive":"0"}
+[2026-03-12 14:51:29] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="8b65fe523bc0f88e46345ad2a2924993">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-03-12 15:10:31] CALL=mobile_check_billing_services id=321a5da16c85979ba593adcf204e704d fields={"cli":"07385297011"}
+[2026-03-12 15:10:37] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="321a5da16c85979ba593adcf204e704d">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-03-12 15:10:37] CALL=mobile_number_attributes id=825c37ec6315a9c7087b4431e746ab5e fields={"mobile-number":"07385297011"}
+[2026-03-12 15:10:42] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="825c37ec6315a9c7087b4431e746ab5e">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-03-12 15:10:42] CALL=mobile_bill_limits id=1dd0fb9472fc8afde2d6f01ee5df06d8 fields={"mobile-number":"07385297011"}
+[2026-03-12 15:10:46] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="1dd0fb9472fc8afde2d6f01ee5df06d8">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-03-12 15:10:46] CALL=mobile_shared_bundles id=dae4484ae6087ffd2755fc4c6ec31288 fields={"show-inactive":"0"}
+[2026-03-12 15:10:53] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="dae4484ae6087ffd2755fc4c6ec31288">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-03-12 15:11:02] CALL=mobile_check_billing_services id=159be31906f68e3ec56b720139f93594 fields={"cli":"07385297011"}
+[2026-03-12 15:11:06] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="159be31906f68e3ec56b720139f93594">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-03-12 15:11:06] CALL=mobile_number_attributes id=05e1563d94017a73bf87dfee91ff538a fields={"mobile-number":"07385297011"}
+[2026-03-12 15:11:08] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="05e1563d94017a73bf87dfee91ff538a">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-03-12 15:11:08] CALL=mobile_bill_limits id=3446382ea952a948005934d12d397296 fields={"mobile-number":"07385297011"}
+[2026-03-12 15:11:13] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="3446382ea952a948005934d12d397296">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-03-12 15:11:13] CALL=mobile_shared_bundles id=d0930b2cfcf8e07c2630caf1f0bb6488 fields={"show-inactive":"0"}
+[2026-03-12 15:11:17] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="d0930b2cfcf8e07c2630caf1f0bb6488">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-03-12 15:11:18] CALL=mobile_check_billing_services id=2ee9a6f62f9d32e0fe0125acc9cc9fa6 fields={"cli":"07385297011"}
+[2026-03-12 15:11:19] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="2ee9a6f62f9d32e0fe0125acc9cc9fa6">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-03-12 15:11:19] CALL=mobile_number_attributes id=fb8db6aba0ca46907a8256a0cf6a8db9 fields={"mobile-number":"07385297011"}
+[2026-03-12 15:11:23] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="fb8db6aba0ca46907a8256a0cf6a8db9">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-03-12 15:11:23] CALL=mobile_bill_limits id=cf33d44fcf5f2f9d102a03c9fbbd1024 fields={"mobile-number":"07385297011"}
+[2026-03-12 15:11:27] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="cf33d44fcf5f2f9d102a03c9fbbd1024">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-03-12 15:11:27] CALL=mobile_shared_bundles id=2b2d3dfc2501716a9568c5f458242ae1 fields={"show-inactive":"0"}
+[2026-03-12 15:11:30] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="2b2d3dfc2501716a9568c5f458242ae1">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-03-12 15:13:50] CALL=mobile_check_billing_services id=9527c5800b0e22f286d1f1724f14daa3 fields={"cli":"07385297011"}
+[2026-03-12 15:13:54] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="9527c5800b0e22f286d1f1724f14daa3">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-03-12 15:13:54] CALL=mobile_number_attributes id=e80bbf611d5bd59916225bb22470178b fields={"mobile-number":"07385297011"}
+[2026-03-12 15:13:59] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="e80bbf611d5bd59916225bb22470178b">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-03-12 15:13:59] CALL=mobile_bill_limits id=649492863bfc059ad5daa898f0150734 fields={"mobile-number":"07385297011"}
+[2026-03-12 15:14:02] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="649492863bfc059ad5daa898f0150734">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-03-12 15:14:02] CALL=mobile_shared_bundles id=a2e5d87975c247d598778cf70684bdf4 fields={"show-inactive":"0"}
+[2026-03-12 15:14:06] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="a2e5d87975c247d598778cf70684bdf4">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-03-12 15:15:37] CALL=mobile_check_billing_services id=c9b334a204729931105aff0da1b728ea fields={"cli":"07385297011"}
+[2026-03-12 15:15:42] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="c9b334a204729931105aff0da1b728ea">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-03-12 15:15:42] CALL=mobile_number_attributes id=80b99d22397f79e63a002fd9877fd6cb fields={"mobile-number":"07385297011"}
+[2026-03-12 15:15:46] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="80b99d22397f79e63a002fd9877fd6cb">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-03-12 15:15:46] CALL=mobile_bill_limits id=3681cd823924ed1b0be5e697298f92a6 fields={"mobile-number":"07385297011"}
+[2026-03-12 15:15:50] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="3681cd823924ed1b0be5e697298f92a6">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-03-12 15:15:50] CALL=mobile_shared_bundles id=72860b34485753f0c183a9ce21b9c670 fields={"show-inactive":"0"}
+[2026-03-12 15:15:54] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="72860b34485753f0c183a9ce21b9c670">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-03-12 15:16:08] CALL=mobile_check_billing_services id=9ce1814f108d35c15c7d072bc3d99f83 fields={"cli":"07385297011"}
+[2026-03-12 15:16:11] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="9ce1814f108d35c15c7d072bc3d99f83">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-03-12 15:16:11] CALL=mobile_number_attributes id=b7d6ff0006ef3da7476d0cc7575688df fields={"mobile-number":"07385297011"}
+[2026-03-12 15:16:15] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="b7d6ff0006ef3da7476d0cc7575688df">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-03-12 15:16:15] CALL=mobile_bill_limits id=f31ac19a63ecd86f21d9d4553abefc94 fields={"mobile-number":"07385297011"}
+[2026-03-12 15:16:19] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="f31ac19a63ecd86f21d9d4553abefc94">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-03-12 15:16:19] CALL=mobile_shared_bundles id=606955a00cf6f7d9e42e2f5bb27b42c9 fields={"show-inactive":"0"}
+[2026-03-12 15:16:23] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="606955a00cf6f7d9e42e2f5bb27b42c9">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+

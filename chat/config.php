@@ -33,3 +33,16 @@ define('ALLOWED_ORIGINS', '*');
 define('UPLOAD_DIR', __DIR__ . '/uploads/');
 define('UPLOAD_URL', APP_URL . '/uploads/');
 define('MAX_UPLOAD_MB', 10);
+
+// aBillity API (CDR / Billing data)
+// System: ROS03TES  |  Docs: GET api/cdr/Summary, GET api/revenueassurance/GetCallAnalysis, etc.
+define('ABILLITY_API_BASE', 'https://web.abillity.co.uk/ROS03TES');
+define('ABILLITY_USERNAME', 'operations@rcuk.com');
+define('ABILLITY_PASSWORD', 'MyAccount2.0*');
+// Auth: POST api/Authenticate with {Username, Password} → returns token for subsequent requests
+
+// Giacom Mobile API — https://comms-api.cloud.market/
+// Credentials are managed via Settings → Giacom API in the admin UI.
+// These constants are fallbacks only; DB settings take priority.
+define('GIACOM_USERNAME', 'maxi.rose@rcuk.com');
+define('GIACOM_PASSWORD', 'RcukAPI-2.0');

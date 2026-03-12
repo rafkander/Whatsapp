@@ -190,6 +190,10 @@ createApp({
         const bitrix24SyncedAt  = ref(null);
         const bitrix24Loading   = ref(false);
 
+        // ── Giacom usage sidebar state ────────────────────────
+        const giacomUsage   = ref(null);
+        const giacomLoading = ref(false);
+
         // ── Contact edit state ────────────────────────────────
         const contactEditForm    = reactive({ name: '', email: '', phone: '' });
         const contactEditLoading = ref(false);
@@ -266,6 +270,10 @@ createApp({
                 if (cRes.bitrix24_enabled && hasPhone && !cRes.bitrix24) {
                     refreshBitrix24(true);
                 }
+
+                // Auto-load Giacom usage
+                giacomUsage.value = null;
+                if (hasPhone) loadGiacomUsage();
             }
 
             // Load agents & depts for assign dropdowns
@@ -1298,6 +1306,20 @@ createApp({
             }
         }
 
+        // ── Giacom Usage ──────────────────────────────────────
+        async function loadGiacomUsage() {
+            if (!activeConv.value?.contact_id) return;
+            giacomLoading.value = true;
+            giacomUsage.value   = null;
+            const res = await api('GET', `agent/giacom_usage.php?contact_id=${activeConv.value.contact_id}`);
+            giacomLoading.value = false;
+            if (res.success) {
+                giacomUsage.value = res;  // contains billing, attributes, bill_limit, bundle, cli
+            } else {
+                giacomUsage.value = { error: res.error || 'Failed to load' };
+            }
+        }
+
         async function loadBitrix24Settings() {
             const res = await api('GET', 'admin/bitrix.php?action=credentials');
             if (res.success) {
@@ -1648,6 +1670,8 @@ createApp({
             waWindowExpired,
             // Contact edit
             contactEditForm, contactEditLoading, saveContactDetails, historyOpen,
+            // Giacom usage
+            giacomUsage, giacomLoading, loadGiacomUsage,
             // Bitrix24
             bitrix24Data, bitrix24Url, bitrix24Fields, bitrix24Enabled, bitrix24SyncedAt, bitrix24Loading,
             bitrix24Settings, bitrix24AvailableFields, bitrix24FieldConfig, bitrix24FieldsLoading,

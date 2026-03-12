@@ -27,6 +27,7 @@ $adminKeys = [
     'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name',
     'email_notify_new_chat', 'email_notify_addresses',
     'sms_enabled', 'alfonica_sms_token',
+    'giacom_api_url', 'giacom_username', 'giacom_password',
 ];
 
 if ($method === 'GET') {
@@ -48,6 +49,9 @@ if ($method === 'GET') {
     if (isset($all['alfonica_sms_token']) && $all['alfonica_sms_token']) {
         $all['alfonica_sms_token'] = str_repeat('*', 20) . substr($all['alfonica_sms_token'], -4);
     }
+    if (isset($all['giacom_password']) && $all['giacom_password']) {
+        $all['giacom_password'] = '••••••••';
+    }
 
     json_success(['settings' => $all]);
 }
@@ -64,7 +68,8 @@ if ($method === 'POST') {
         // Don't overwrite masked values
         if ($key === 'wa_access_token'    && str_contains((string)$value, '*')) continue;
         if ($key === 'alfonica_sms_token' && str_contains((string)$value, '*')) continue;
-        if ($key === 'smtp_pass' && $value === '••••••••') continue;
+        if ($key === 'smtp_pass'          && $value === '••••••••') continue;
+        if ($key === 'giacom_password'    && $value === '••••••••') continue;
 
         set_setting($key, (string)$value);
         $updated[] = $key;

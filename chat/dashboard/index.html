@@ -786,6 +786,127 @@
                             </div>
                         </div>
 
+                        <!-- Giacom Mobile Usage -->
+                        <div class="info-section">
+                            <div class="info-section-hd" style="display:flex;align-items:center;justify-content:space-between">
+                                <span>Mobile</span>
+                                <button class="btn btn-xs" @click="loadGiacomUsage" :disabled="giacomLoading"
+                                        style="font-size:.68rem;padding:2px 8px;line-height:1.4">
+                                    {{ giacomLoading ? '…' : 'Refresh' }}
+                                </button>
+                            </div>
+
+                            <div v-if="giacomLoading" style="font-size:.78rem;color:var(--text-3);padding:4px 0">Loading…</div>
+
+                            <template v-else-if="giacomUsage">
+                                <!-- Error state -->
+                                <div v-if="giacomUsage.error" style="font-size:.78rem;color:var(--red,#dc2626);padding:4px 0">
+                                    {{ giacomUsage.error }}
+                                </div>
+
+                                <template v-else>
+                                    <!-- Shared bundle usage -->
+                                    <template v-if="giacomUsage.bundle">
+                                        <div style="background:var(--bg-2);border-radius:7px;padding:8px 10px;margin-bottom:8px">
+                                            <div style="font-size:.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">
+                                                {{ giacomUsage.bundle.product_name || 'Shared Bundle' }}
+                                                <span v-if="giacomUsage.bundle.network" style="font-weight:400"> · {{ giacomUsage.bundle.network }}</span>
+                                            </div>
+                                            <div class="info-kv" v-if="giacomUsage.bundle.units_used_this_month != null">
+                                                <div class="info-k">Used this month</div>
+                                                <div class="info-v" style="font-weight:600">{{ giacomUsage.bundle.units_used_this_month }}</div>
+                                            </div>
+                                            <div class="info-kv" v-if="giacomUsage.bundle.units_used_last_month != null">
+                                                <div class="info-k">Used last month</div>
+                                                <div class="info-v">{{ giacomUsage.bundle.units_used_last_month }}</div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <!-- aBillity CDR data usage -->
+                                    <template v-if="giacomUsage.cdr_usage && !giacomUsage.cdr_usage.error">
+                                        <div style="background:var(--bg-2);border-radius:7px;padding:8px 10px;margin-bottom:8px">
+                                            <div style="font-size:.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Data Usage This Period</div>
+                                            <div class="info-kv">
+                                                <div class="info-k">Used</div>
+                                                <div class="info-v" style="font-weight:600;color:var(--accent,#2563eb)">
+                                                    {{ giacomUsage.cdr_usage.total_gb >= 1 ? giacomUsage.cdr_usage.total_gb.toFixed(2) + ' GB' : giacomUsage.cdr_usage.total_mb.toFixed(0) + ' MB' }}
+                                                </div>
+                                            </div>
+                                            <div class="info-kv" v-if="giacomUsage.cdr_usage.voice_sms_records > 0">
+                                                <div class="info-k">Voice / SMS</div>
+                                                <div class="info-v">{{ giacomUsage.cdr_usage.voice_sms_records }} records</div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <template v-else-if="giacomUsage.cdr_usage && giacomUsage.cdr_usage.error">
+                                        <div style="font-size:.75rem;color:var(--text-3);margin-bottom:6px">CDR: {{ giacomUsage.cdr_usage.error }}</div>
+                                    </template>
+
+                                    <!-- Active services / current plan -->
+                                    <template v-if="giacomUsage.active_services && giacomUsage.active_services.length">
+                                        <div style="font-size:.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Current Plan</div>
+                                        <div v-for="svc in giacomUsage.active_services" :key="svc.name" class="info-kv" style="align-items:flex-start">
+                                            <div class="info-k" style="padding-top:1px">
+                                                <span style="display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:middle"
+                                                      :style="{background: svc.type==='voice' ? '#2563eb' : '#059669'}"></span>
+                                                {{ svc.type }}
+                                            </div>
+                                            <div class="info-v" style="font-size:.73rem;line-height:1.4">
+                                                {{ svc.name }}
+                                                <span v-if="svc.price && svc.price !== '0'" style="color:var(--text-3)"> · £{{ svc.price }}/mo</span>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <!-- SIM info -->
+                                    <template v-if="giacomUsage.sim_info && Object.keys(giacomUsage.sim_info).length">
+                                        <div style="font-size:.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 4px">SIM</div>
+                                        <div v-for="(val, label) in giacomUsage.sim_info" :key="label" class="info-kv">
+                                            <div class="info-k">{{ label }}</div>
+                                            <div class="info-v">{{ val }}</div>
+                                        </div>
+                                    </template>
+
+                                    <!-- Services (4G, 5G, MMS etc) -->
+                                    <template v-if="giacomUsage.services && Object.keys(giacomUsage.services).length">
+                                        <div style="font-size:.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 4px">Features</div>
+                                        <div style="display:flex;flex-wrap:wrap;gap:4px">
+                                            <span v-for="(val, label) in giacomUsage.services" :key="label"
+                                                  :style="{background: val==='Yes' ? 'var(--green-muted,#dcfce7)' : 'var(--bg-2)', color: val==='Yes' ? '#15803d' : 'var(--text-3)', opacity: val==='Yes' ? 1 : 0.5}"
+                                                  style="font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:10px;border:1px solid currentColor">
+                                                {{ label }}
+                                            </span>
+                                        </div>
+                                    </template>
+
+                                    <!-- Active bars -->
+                                    <template v-if="giacomUsage.active_bars && giacomUsage.active_bars.length">
+                                        <div style="font-size:.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 4px">Active Bars</div>
+                                        <div style="display:flex;flex-wrap:wrap;gap:4px">
+                                            <span v-for="bar in giacomUsage.active_bars" :key="bar"
+                                                  style="font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:10px;background:#fef2f2;color:#dc2626;border:1px solid #dc2626">
+                                                {{ bar }}
+                                            </span>
+                                        </div>
+                                    </template>
+
+                                    <!-- Spend cap -->
+                                    <div v-if="giacomUsage.bill_limit" class="info-kv" style="margin-top:6px">
+                                        <div class="info-k">Spend cap</div>
+                                        <div class="info-v">£{{ giacomUsage.bill_limit }}</div>
+                                    </div>
+
+                                    <div style="font-size:.65rem;color:var(--text-3);margin-top:8px;display:flex;justify-content:space-between">
+                                        <span>CLI: {{ giacomUsage.cli }}</span>
+                                        <span v-if="giacomUsage.last_refresh">Last refresh: {{ giacomUsage.last_refresh ? giacomUsage.last_refresh.substring(0,10) : '' }}</span>
+                                    </div>
+                                </template>
+                            </template>
+
+                            <div v-else style="font-size:.78rem;color:var(--text-3);padding:4px 0">No mobile data loaded.</div>
+                        </div>
+
                         <!-- History (collapsed by default) -->
                         <div class="info-section" v-if="contactHistory.length>0">
                             <div class="info-section-hd" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" @click="historyOpen=!historyOpen">
@@ -1437,6 +1558,34 @@
                         <div class="modal-ft">
                             <button class="btn btn-ghost" @click="showSmsAccountModal=false">Cancel</button>
                             <button class="btn btn-primary" @click="saveSmsAccount">{{ editingSmsAccount ? 'Save Changes' : 'Add Account' }}</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Giacom API Integration Card -->
+                <div class="card settings-section" v-if="canAccess('admin')">
+                    <div class="card-hd">📡 Giacom API (Data Usage)</div>
+                    <div style="padding:20px">
+                        <div class="f-group">
+                            <label class="f-label">API Base URL</label>
+                            <input class="f-input" type="text" v-model="settings.giacom_api_url"
+                                   placeholder="e.g. https://api.giacom.net/dwapi">
+                            <div class="f-hint">The Giacom XML API endpoint. Confirm exact URL with Giacom support.</div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                            <div class="f-group" style="margin-bottom:0">
+                                <label class="f-label">Username</label>
+                                <input class="f-input" type="text" v-model="settings.giacom_username"
+                                       placeholder="e.g. maxi.rose@rcuk.com">
+                            </div>
+                            <div class="f-group" style="margin-bottom:0">
+                                <label class="f-label">Password</label>
+                                <input class="f-input" type="password" v-model="settings.giacom_password"
+                                       placeholder="Leave blank to keep current">
+                            </div>
+                        </div>
+                        <div style="margin-top:16px">
+                            <button class="btn btn-primary" @click="saveSettings">Save</button>
                         </div>
                     </div>
                 </div>

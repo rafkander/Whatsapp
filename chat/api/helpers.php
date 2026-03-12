@@ -865,6 +865,362 @@ function _b24_post(string $url, array $payload): array {
     return json_decode($raw, true) ?? [];
 }
 
+// ── Giacom Mobile API ─────────────────────────────────────────
+// Base URL: https://comms-api.cloud.market/
+// All calls are XML POST with auth block in every request.
+// Docs: https://comms-api.cloud.market/documentation
+
+function giacom_log(string $msg): void {
+    $logFile = dirname(__DIR__) . '/giacom.log';
+    file_put_contents($logFile, '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL, FILE_APPEND | LOCK_EX);
+}
+
+/**
+ * Send an XML request to the Giacom dwapi.
+ *
+ * @param string $call   API method name e.g. 'mobile_check_billing_services'
+ * @param array  $fields flat key→value <a> elements
+ * @param array  $blocks named <block> elements: ['block-name' => ['key' => 'value']]
+ */
+function giacom_request(string $call, array $fields = [], array $blocks = []): array {
+    $baseUrl  = get_setting('giacom_api_url') ?: (defined('GIACOM_API_URL') ? GIACOM_API_URL : 'https://comms-api.cloud.market/');
+    $username = get_setting('giacom_username') ?: (defined('GIACOM_USERNAME') ? GIACOM_USERNAME : '');
+    $password = get_setting('giacom_password') ?: (defined('GIACOM_PASSWORD') ? GIACOM_PASSWORD : '');
+
+    if (!$username || !$password) {
+        giacom_log("REQUEST FAILED — missing credentials");
+        return ['error' => 'Giacom credentials not configured'];
+    }
+
+    $requestId = md5(uniqid($call, true));
+
+    $xml  = "<?xml version='1.0'?>\n";
+    $xml .= "<Request module='dwapi' call='" . htmlspecialchars($call, ENT_XML1) . "' id='" . $requestId . "' version='1.0'>\n";
+    $xml .= "  <block name='auth'>\n";
+    $xml .= "    <a name='username' format='text'>" . htmlspecialchars($username, ENT_XML1) . "</a>\n";
+    $xml .= "    <a name='password' format='password'>" . htmlspecialchars($password, ENT_XML1) . "</a>\n";
+    $xml .= "  </block>\n";
+    foreach ($fields as $name => $value) {
+        $xml .= "  <a name='" . htmlspecialchars($name, ENT_XML1) . "' format='text'>" . htmlspecialchars((string)$value, ENT_XML1) . "</a>\n";
+    }
+    foreach ($blocks as $blockName => $blockFields) {
+        $xml .= "  <block name='" . htmlspecialchars($blockName, ENT_XML1) . "'>\n";
+        foreach ($blockFields as $k => $v) {
+            $xml .= "    <a name='" . htmlspecialchars($k, ENT_XML1) . "' format='text'>" . htmlspecialchars((string)$v, ENT_XML1) . "</a>\n";
+        }
+        $xml .= "  </block>\n";
+    }
+    $xml .= "</Request>";
+
+    giacom_log("CALL=$call id=$requestId fields=" . json_encode($fields));
+
+    $ch = curl_init(rtrim($baseUrl, '/') . '/');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $xml,
+        CURLOPT_HTTPHEADER     => ['Content-Type: text/xml; charset=utf-8'],
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_USERAGENT      => 'ChatSystem/1.0',
+    ]);
+    $raw  = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+
+    if ($err) {
+        giacom_log("CURL ERROR call=$call: $err");
+        return ['error' => $err];
+    }
+
+    giacom_log("RESPONSE code=$code body=" . substr($raw ?: '', 0, 800));
+
+    libxml_use_internal_errors(true);
+    $dom = simplexml_load_string($raw ?: '');
+    if ($dom === false) {
+        return ['error' => 'Invalid XML response', 'http_code' => $code];
+    }
+
+    $parsed = _giacom_xml_to_array($dom);
+    $parsed['http_code'] = $code;
+
+    // Surface API-level error from <status no="X" description="..."/>
+    $statusNo = $parsed['status']['@no'] ?? null;
+    if ($statusNo !== null && (string)$statusNo !== '0') {
+        $parsed['error'] = $parsed['status']['@description'] ?? "Giacom API error (status $statusNo)";
+    }
+
+    return $parsed;
+}
+
+/** Recursively convert a SimpleXMLElement to a plain array */
+function _giacom_xml_to_array(\SimpleXMLElement $xml): array {
+    $out = [];
+    foreach ($xml->attributes() as $k => $v) {
+        $out['@' . $k] = (string)$v;
+    }
+    foreach ($xml->children() as $child) {
+        $tag  = $child->getName();
+        $name = (string)($child->attributes()['name'] ?? '');
+        if ($tag === 'a' && $name !== '') {
+            $out[$name] = (string)$child;
+        } elseif (($tag === 'block' || $tag === 'status') && $name !== '') {
+            $out[$name] = _giacom_xml_to_array($child);
+        } elseif ($tag === 'status') {
+            $out['status'] = _giacom_xml_to_array($child);
+        } else {
+            $arr = _giacom_xml_to_array($child);
+            if (isset($out[$tag])) {
+                if (!isset($out[$tag][0]) || !is_array($out[$tag][0])) $out[$tag] = [$out[$tag]];
+                $out[$tag][] = $arr;
+            } else {
+                $out[$tag] = $arr;
+            }
+        }
+    }
+    if (empty($out)) {
+        $text = trim((string)$xml);
+        if ($text !== '') return ['_text' => $text];
+    }
+    return $out;
+}
+
+/** Check which CLI a SIM serial is assigned to (confirms SIM swap) */
+function giacom_sim_lookup(string $network, string $simSerial): array {
+    return giacom_request('mobile_lookup_sim_cli', [
+        'network'    => $network,
+        'sim-serial' => $simSerial,
+    ]);
+}
+
+/** Current billing services (tariff + bolt-ons) on a CLI */
+function giacom_billing_services(string $cli): array {
+    return giacom_request('mobile_check_billing_services', ['cli' => $cli]);
+}
+
+/** Full attributes/services on a mobile number — includes data allowance, active services */
+function giacom_number_attributes(string $mobileNumber, bool $refresh = false): array {
+    $fields = ['mobile-number' => $mobileNumber];
+    if ($refresh) $fields['refresh'] = '1';
+    return giacom_request('mobile_number_attributes', $fields);
+}
+
+/** Spend cap / bill limit on a CLI */
+function giacom_bill_limit(string $mobileNumber): array {
+    return giacom_request('mobile_bill_limits', ['mobile-number' => $mobileNumber]);
+}
+
+/** All shared bundles on the account with pool-level usage (units-used-this-month/last-month) */
+function giacom_shared_bundles(bool $showInactive = false): array {
+    return giacom_request('mobile_shared_bundles', ['show-inactive' => $showInactive ? '1' : '0']);
+}
+
+/** Per-CLI usage within a shared bundle. Filter by $cli to get one number's usage */
+function giacom_shared_bundle_clis(string $bundleId, ?string $cli = null): array {
+    $fields = ['shared-bundle-id' => $bundleId];
+    if ($cli) $fields['cli'] = $cli;
+    return giacom_request('mobile_shared_bundle_clis', $fields);
+}
+
+/** List all CLIs on the account (paginated, 100/page) */
+function giacom_account_clis(int $page = 1, bool $liveOnly = true): array {
+    return giacom_request('account_mobile_clis', [
+        'live-only' => $liveOnly ? '1' : '0',
+        'page'      => (string)$page,
+    ]);
+}
+
+/** Network a mobile number is on */
+function giacom_number_network(string $mobileNumber): array {
+    return giacom_request('mobile_number_network', ['mobile-number' => $mobileNumber]);
+}
+
+// ── aBillity CDR API ──────────────────────────────────────────
+/**
+ * Authenticate to aBillity and return session cookies as a header string.
+ * Cookies are cached in a temp file (keyed by credentials hash) and reused
+ * until they expire or validation fails.
+ */
+function _abillity_cookie_file(): string {
+    $hash = substr(md5(ABILLITY_USERNAME . ABILLITY_PASSWORD), 0, 8);
+    return sys_get_temp_dir() . '/abillity_session_' . $hash . '.txt';
+}
+
+function _abillity_authenticate(): bool {
+    $cookieFile = _abillity_cookie_file();
+    $baseUrl    = 'https://web.abillity.co.uk/ROS03TES';
+
+    // 1. Fetch login page for CSRF token
+    $ch = curl_init("$baseUrl/Account/Login");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_COOKIEJAR      => $cookieFile,
+        CURLOPT_COOKIEFILE     => $cookieFile,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0',
+    ]);
+    $loginHtml = curl_exec($ch);
+    if (!$loginHtml) return false;
+
+    // Extract CSRF token
+    if (!preg_match('/name="__RequestVerificationToken"[^>]+value="([^"]+)"/', $loginHtml, $m)) return false;
+    $csrf = $m[1];
+
+    // 2. POST credentials
+    $ch = curl_init("$baseUrl/Account/Login");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => http_build_query([
+            '__RequestVerificationToken' => $csrf,
+            'UserName'                   => ABILLITY_USERNAME,
+            'Password'                   => ABILLITY_PASSWORD,
+            'RememberMe'                 => 'false',
+        ]),
+        CURLOPT_COOKIEJAR      => $cookieFile,
+        CURLOPT_COOKIEFILE     => $cookieFile,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0',
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
+    ]);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    return $http === 302; // success = redirect to home
+}
+
+/**
+ * Discover the current (most recent, non-closed) billing period ID from
+ * the CallAnalysis page.  Returns period id or null.
+ */
+function _abillity_current_period(): ?int {
+    $cookieFile = _abillity_cookie_file();
+    $baseUrl    = 'https://web.abillity.co.uk/ROS03TES';
+
+    $ch = curl_init("$baseUrl/RevenueAssurance/callanalysis");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_COOKIEJAR      => $cookieFile,
+        CURLOPT_COOKIEFILE     => $cookieFile,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0',
+    ]);
+    $html = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    if ($code !== 200 || !$html) return null;
+
+    // Find first <option data-closed="False" ... value="N">
+    if (preg_match('/<option[^>]+data-closed="False"[^>]+value="(\d+)"/', $html, $m)) {
+        return (int)$m[1];
+    }
+    return null;
+}
+
+/**
+ * Fetch CDR data usage for a CLI in the current billing period.
+ * Returns array with keys: total_mb, total_gb, data_records, voice_sms_records,
+ *   billing_period_id, period_label, call_cost.
+ */
+function abillity_cdr_usage(string $cli): array {
+    $cookieFile = _abillity_cookie_file();
+
+    // Ensure we have a valid session (authenticate if cookie file is missing/old)
+    $needAuth = !file_exists($cookieFile) || (time() - filemtime($cookieFile) > 3600 * 7);
+    if ($needAuth) {
+        if (!_abillity_authenticate()) {
+            return ['error' => 'aBillity authentication failed'];
+        }
+    }
+
+    // Discover current billing period
+    $periodId = _abillity_current_period();
+    if (!$periodId) {
+        // Re-auth once and retry
+        if (!_abillity_authenticate()) return ['error' => 'aBillity auth failed'];
+        $periodId = _abillity_current_period();
+        if (!$periodId) return ['error' => 'Could not determine billing period'];
+    }
+
+    // Fetch CDR records (up to 2000 to cover heavy users)
+    $url = 'https://web.abillity.co.uk/ROS03TES/revenueassurance/callanalysis/SearchCallAnalysis?' . http_build_query([
+        'draw'                   => 1,
+        'start'                  => 0,
+        'length'                 => 2000,
+        'Filter[billingperiod]'  => $periodId,
+        'Filter[calledfrom]'     => $cli,
+    ]);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_COOKIEJAR      => $cookieFile,
+        CURLOPT_COOKIEFILE     => $cookieFile,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0',
+        CURLOPT_HTTPHEADER     => [
+            'X-Requested-With: XMLHttpRequest',
+            'Referer: https://web.abillity.co.uk/ROS03TES/RevenueAssurance/callanalysis',
+        ],
+    ]);
+    $json = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    if ($code !== 200) {
+        // Session may have expired — re-auth once
+        if (!_abillity_authenticate()) return ['error' => 'aBillity re-auth failed'];
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_COOKIEFILE     => $cookieFile,
+            CURLOPT_COOKIEJAR      => $cookieFile,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0',
+            CURLOPT_HTTPHEADER     => [
+                'X-Requested-With: XMLHttpRequest',
+                'Referer: https://web.abillity.co.uk/ROS03TES/RevenueAssurance/callanalysis',
+            ],
+        ]);
+        $json = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($code !== 200) return ['error' => "aBillity CDR query failed ($code)"];
+    }
+
+    $result = json_decode($json, true);
+    if (!isset($result['data'])) return ['error' => 'Unexpected aBillity response'];
+
+    $records       = $result['data'];
+    $totalMb       = 0.0;
+    $totalCost     = 0.0;
+    $dataCount     = 0;
+    $voiceSmsCount = 0;
+    foreach ($records as $r) {
+        if (!empty($r['Gprs'])) {
+            $totalMb += (float)($r['Usage'] ?? 0);
+            $dataCount++;
+        } else {
+            $voiceSmsCount++;
+        }
+        $totalCost += (float)($r['Cost'] ?? 0);
+    }
+
+    return [
+        'total_mb'          => round($totalMb, 2),
+        'total_gb'          => round($totalMb / 1024, 3),
+        'data_records'      => $dataCount,
+        'voice_sms_records' => $voiceSmsCount,
+        'billing_period_id' => $periodId,
+        'call_cost'         => round($totalCost, 4),
+    ];
+}
+
 // ── Email Notification ────────────────────────────────────────
 function notify_new_conversation(array $conv, array $contact): void {
     if (!get_setting('email_notify_new_chat')) return;
