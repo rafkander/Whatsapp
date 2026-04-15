@@ -658,3 +658,283 @@
   <block name="shared-bundles"/>
 </Response>
 
+[2026-04-15 11:53:34] CALL=mobile_check_billing_services id=8d7048c388871bab751e8be13fc4df66 fields={"cli":"07385297011"}
+[2026-04-15 11:53:39] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="8d7048c388871bab751e8be13fc4df66">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-04-15 11:53:39] CALL=mobile_number_attributes id=5d768affd0db37dbd6b8262480dc091c fields={"mobile-number":"07385297011"}
+[2026-04-15 11:53:44] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="5d768affd0db37dbd6b8262480dc091c">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-04-15 11:53:44] CALL=mobile_bill_limits id=47cc2d4b0e359b8c3a1aa8d49a40cc88 fields={"mobile-number":"07385297011"}
+[2026-04-15 11:53:48] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="47cc2d4b0e359b8c3a1aa8d49a40cc88">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-04-15 11:53:48] CALL=mobile_shared_bundles id=e5a5b8126c9f5add55c67e9585d4b1a4 fields={"show-inactive":"0"}
+[2026-04-15 11:53:54] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="e5a5b8126c9f5add55c67e9585d4b1a4">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-04-15 12:06:06] CALL=mobile_check_billing_services id=8be1f60d0d30b6372791ab936fa75d61 fields={"cli":"07385297011"}
+[2026-04-15 12:06:11] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="8be1f60d0d30b6372791ab936fa75d61">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-04-15 12:06:11] CALL=mobile_number_attributes id=537a793aa9524a60da263b427207f4f0 fields={"mobile-number":"07385297011"}
+[2026-04-15 12:06:16] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="537a793aa9524a60da263b427207f4f0">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-04-15 12:06:16] CALL=mobile_bill_limits id=f10e040cfec069d9bf65cf841dc2f1e9 fields={"mobile-number":"07385297011"}
+[2026-04-15 12:06:21] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="f10e040cfec069d9bf65cf841dc2f1e9">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-04-15 12:06:21] CALL=mobile_shared_bundles id=c78ea4449d83d4740d4eabb958790ee2 fields={"show-inactive":"0"}
+[2026-04-15 12:06:25] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="c78ea4449d83d4740d4eabb958790ee2">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-04-15 12:07:02] CALL=mobile_check_billing_services id=91d106ffd6897dc4d058d60c2c720937 fields={"cli":"07830325955"}
+[2026-04-15 12:07:07] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="91d106ffd6897dc4d058d60c2c720937">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:07:07] CALL=mobile_number_attributes id=9fb2ad372179c7bcd4a5f67becf43e59 fields={"mobile-number":"07830325955"}
+[2026-04-15 12:07:11] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="9fb2ad372179c7bcd4a5f67becf43e59">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:07:11] CALL=mobile_bill_limits id=c68c69e104d11fecb35e0d5151616a68 fields={"mobile-number":"07830325955"}
+[2026-04-15 12:07:23] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="c68c69e104d11fecb35e0d5151616a68">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:07:23] CALL=mobile_shared_bundles id=471c3a486e4a4049afb811b956e5a89b fields={"show-inactive":"0"}
+[2026-04-15 12:07:30] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="471c3a486e4a4049afb811b956e5a89b">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-04-15 12:07:37] CALL=mobile_check_billing_services id=eab884db2d7772a35d01667c6285136c fields={"cli":"07830325955"}
+[2026-04-15 12:07:41] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="eab884db2d7772a35d01667c6285136c">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:07:41] CALL=mobile_number_attributes id=0a6f4bd582a3a412d1b03fe6091df57a fields={"mobile-number":"07830325955"}
+[2026-04-15 12:07:45] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="0a6f4bd582a3a412d1b03fe6091df57a">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:07:45] CALL=mobile_bill_limits id=e638d905604d4622fc3ad910ef614e6a fields={"mobile-number":"07830325955"}
+[2026-04-15 12:07:50] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="e638d905604d4622fc3ad910ef614e6a">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:07:50] CALL=mobile_shared_bundles id=54158ef028f097ca9312771073f4c154 fields={"show-inactive":"0"}
+[2026-04-15 12:07:54] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="54158ef028f097ca9312771073f4c154">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-04-15 12:09:40] CALL=mobile_check_billing_services id=baa76bf9aac90355aa73e6706fdcd4f5 fields={"cli":"07385297011"}
+[2026-04-15 12:09:44] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="baa76bf9aac90355aa73e6706fdcd4f5">
+  <status no="0"/>
+  <a name="cli" format="phone">07385297011</a>
+  <a name="product-id" format="counting">41843</a>
+  <block name="services">
+    <block>
+      <a name="bolt-on-subtype" format="text"/>
+      <a name="bolt-on-type" format="text"/>
+      <a name="description" format="text">Voda GPRS Data Profile</a>
+      <a name="external-system-reference-id" format="counting">5085988</a>
+      <a name="is-active" format="boolean">1</a>
+      <a name="name" format="text">Voda GPRS Data Profile</a>
+      <a name="rate-before-discount" format="counting">0</a>
+      <a name="service-id" format="counting">18809</a>
+      <a name="service-type" format="text">data</a>
+      <a name="start-date" format="datetime">2026-01-01 00
+[2026-04-15 12:09:44] CALL=mobile_number_attributes id=8e1c8cfc6c11bdcc4f93421d2d592aef fields={"mobile-number":"07385297011"}
+[2026-04-15 12:09:49] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="8e1c8cfc6c11bdcc4f93421d2d592aef">
+  <status no="0"/>
+  <block name="grouped-attributes">
+    <block>
+      <block name="attributes">
+        <block>
+          <block name="attribute">
+            <a name="editable" format="boolean">1</a>
+            <a name="id" format="counting">627</a>
+            <a name="is-deleted" format="boolean">0</a>
+            <a name="label" format="text">Name for resign</a>
+            <a name="name" format="text">name_for_resign</a>
+            <a name="required" format="boolean">0</a>
+            <a name="type" format="text">Text</a>
+          </block>
+          <a name="value" format="text">DWVRC20 - Unlimited UK mins/SMS/20GB + TF + TP</a>
+        </block>
+        <block>
+          <block name="attribute">
+            <
+[2026-04-15 12:09:49] CALL=mobile_bill_limits id=0de072ef41c6e88c323dafa4674e57f1 fields={"mobile-number":"07385297011"}
+[2026-04-15 12:09:55] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="0de072ef41c6e88c323dafa4674e57f1">
+  <status no="0"/>
+  <block name="bill-limits">
+    <block>
+      <a name="applies-from-date" format="date">2025-11-11</a>
+      <a name="limit" format="counting">2500.00</a>
+      <a name="mobile-number" format="phone">07385297011</a>
+    </block>
+  </block>
+</Response>
+
+[2026-04-15 12:09:55] CALL=mobile_shared_bundles id=d61290fef53a896179bd49730c2569d6 fields={"show-inactive":"0"}
+[2026-04-15 12:09:59] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="d61290fef53a896179bd49730c2569d6">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-04-15 12:10:54] CALL=mobile_check_billing_services id=610dd53af52c324be6f53a305b25594c fields={"cli":"07830325955"}
+[2026-04-15 12:10:58] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="610dd53af52c324be6f53a305b25594c">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:10:58] CALL=mobile_number_attributes id=51bf781cd9f7429a8de8f4bed49db999 fields={"mobile-number":"07830325955"}
+[2026-04-15 12:11:01] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="51bf781cd9f7429a8de8f4bed49db999">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:11:01] CALL=mobile_bill_limits id=0b68e97f443805aa90dc6e4a1397d527 fields={"mobile-number":"07830325955"}
+[2026-04-15 12:11:05] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="0b68e97f443805aa90dc6e4a1397d527">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:11:05] CALL=mobile_shared_bundles id=bd39bba22d1fe704e4f424599675d1f6 fields={"show-inactive":"0"}
+[2026-04-15 12:11:10] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="bd39bba22d1fe704e4f424599675d1f6">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+
+[2026-04-15 12:11:18] CALL=mobile_check_billing_services id=73133d330c77228cdcbeec07e037aff4 fields={"cli":"07830325955"}
+[2026-04-15 12:11:22] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="73133d330c77228cdcbeec07e037aff4">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:11:22] CALL=mobile_number_attributes id=8f341f149d1b1efb7bdddb0403062df8 fields={"mobile-number":"07830325955"}
+[2026-04-15 12:11:26] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="8f341f149d1b1efb7bdddb0403062df8">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:11:26] CALL=mobile_bill_limits id=f7d20be34acbb51810a4bf8fb21caa02 fields={"mobile-number":"07830325955"}
+[2026-04-15 12:11:29] RESPONSE code=500 body=<?xml version="1.0"?>
+<Response id="f7d20be34acbb51810a4bf8fb21caa02">
+  <status no="91016" text="Error: [DataException] Unable to find CLI or no permission to access: 07830325955"/>
+</Response>
+
+[2026-04-15 12:11:29] CALL=mobile_shared_bundles id=e8ea7f29447ef2fcc44b720f9aefa3d2 fields={"show-inactive":"0"}
+[2026-04-15 12:11:32] RESPONSE code=200 body=<?xml version="1.0"?>
+<Response id="e8ea7f29447ef2fcc44b720f9aefa3d2">
+  <status no="0"/>
+  <block name="shared-bundles"/>
+</Response>
+

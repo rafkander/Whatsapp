@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Widget Test Page</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.5; }
+        code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
+        pre { background: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; }
+        .note { background: #fef3c7; padding: 12px; border-radius: 6px; border-left: 4px solid #f59e0b; }
+        .origin { font-family: monospace; color: #0891b2; }
+    </style>
+</head>
+<body>
+    <h1>Chat Widget Test Page</h1>
+    <p>Page origin: <span class="origin" id="origin"></span></p>
+    <p>To truly test the allowlist, open this page on port <strong>9000</strong>
+       (<code>http://localhost:9000/test-widget.html</code>) — that's cross-origin from the chat API on port 8000,
+       so CORS will kick in. Opening it on port 8000 is same-origin and bypasses CORS.</p>
+    <pre>&lt;script src="http://localhost:8000/widget/loader.js" data-brand="rcuk"&gt;&lt;/script&gt;</pre>
+    <div class="note">
+        The widget bubble should only appear if this page's origin is listed in
+        <strong>Admin Settings → Allowed Widget Domains</strong>.
+    </div>
+    <script>document.getElementById('origin').textContent = location.origin;</script>
+    <script src="http://localhost:8000/widget/loader.js" data-brand="rcuk"></script>
+</body>
+</html>

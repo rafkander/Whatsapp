@@ -31,11 +31,13 @@ $offset  = ($page - 1) * $limit;
 $where  = ['1=1'];
 $params = [];
 
-// Dept-based visibility: agents with dept memberships only see those depts + unassigned
+// Dept-based visibility: agents with dept memberships only see those depts + unassigned.
+// Admins and above always see every department regardless of memberships.
+$isAdmin = role_level($agent['role']) >= role_level('admin');
 $deptRows = $pdo->prepare('SELECT dept_id FROM agent_departments WHERE agent_id = ?');
 $deptRows->execute([$agent['id']]);
 $agentDepts = $deptRows->fetchAll(PDO::FETCH_COLUMN);
-if ($agentDepts) {
+if ($agentDepts && !$isAdmin) {
     $ph = implode(',', array_fill(0, count($agentDepts), '?'));
     $where[] = "(c.dept_id IS NULL OR c.dept_id IN ({$ph}))";
     foreach ($agentDepts as $d) $params[] = $d;
@@ -44,6 +46,9 @@ if ($agentDepts) {
 if ($status) {
     $where[]  = 'c.status = ?';
     $params[] = $status;
+} else {
+    // Hide outbound-only pending conversations (e.g. SMS sent but not yet replied to)
+    $where[] = "c.status != 'pending'";
 }
 
 if ($deptId !== null) {
@@ -76,6 +81,9 @@ if ($search) {
     $params[] = $like;
     $params[] = $like;
 }
+
+// Hide widget conversations that have no visitor message yet (ghost rows from widget init)
+$where[] = "(c.channel != 'widget' OR EXISTS (SELECT 1 FROM messages mv WHERE mv.conversation_id = c.id AND mv.sender_type = 'visitor'))";
 
 $whereStr = implode(' AND ', $where);
 
@@ -115,13 +123,14 @@ $cstmt    = $pdo->prepare($countSql);
 $cstmt->execute($params);
 $total = (int)$cstmt->fetchColumn();
 
-// Unread count — scoped to agent's visible depts
-if ($agentDepts) {
+// Unread count — scoped to agent's visible depts, and excluding widget convs with no visitor message yet
+$widgetGate = "(channel != 'widget' OR EXISTS (SELECT 1 FROM messages mv WHERE mv.conversation_id = conversations.id AND mv.sender_type = 'visitor'))";
+if ($agentDepts && !$isAdmin) {
     $ph2 = implode(',', array_fill(0, count($agentDepts), '?'));
-    $unreadStmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE unread_agent > 0 AND status = 'open' AND (dept_id IS NULL OR dept_id IN ({$ph2}))");
+    $unreadStmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE unread_agent > 0 AND status = 'open' AND (dept_id IS NULL OR dept_id IN ({$ph2})) AND {$widgetGate}");
     $unreadStmt->execute($agentDepts);
 } else {
-    $unreadStmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE unread_agent > 0 AND status = 'open'");
+    $unreadStmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE unread_agent > 0 AND status = 'open' AND {$widgetGate}");
     $unreadStmt->execute();
 }
 $unreadCount = (int)$unreadStmt->fetchColumn();

@@ -5,6 +5,10 @@
 (function () {
     'use strict';
 
+    // Domain allowlist is managed in Admin Settings → "Allowed Widget Domains" and
+    // enforced server-side by CORS. The widget bails out in init.php if the origin
+    // isn't authorised, so no client-side host check is needed here.
+
     const scripts    = document.getElementsByTagName('script');
     const thisScript = scripts[scripts.length - 1];
     const src        = thisScript.src;

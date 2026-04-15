@@ -17,20 +17,24 @@ $agent  = require_agent();
 $pdo    = db();
 $lastId = (int)($_GET['last_conv_id'] ?? 0);
 
-// Agent's dept restrictions
+// Agent's dept restrictions — admins and above see every dept
+$isAdmin = role_level($agent['role']) >= role_level('admin');
 $deptRows = $pdo->prepare('SELECT dept_id FROM agent_departments WHERE agent_id = ?');
 $deptRows->execute([$agent['id']]);
 $agentDepts = $deptRows->fetchAll(PDO::FETCH_COLUMN);
 $deptFilter = '';
 $deptParams = [];
-if ($agentDepts) {
+if ($agentDepts && !$isAdmin) {
     $ph = implode(',', array_fill(0, count($agentDepts), '?'));
     $deptFilter = " AND (dept_id IS NULL OR dept_id IN ({$ph}))";
     $deptParams = $agentDepts;
 }
 
+// Hide widget conversations that have no visitor message yet
+$widgetGate = " AND (channel != 'widget' OR EXISTS (SELECT 1 FROM messages mv WHERE mv.conversation_id = conversations.id AND mv.sender_type = 'visitor'))";
+
 // Total unread conversations (scoped to visible depts)
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE unread_agent > 0 AND status = 'open'" . $deptFilter);
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE unread_agent > 0 AND status = 'open'" . $deptFilter . $widgetGate);
 $stmt->execute($deptParams);
 $unreadCount = (int)$stmt->fetchColumn();
 
@@ -43,6 +47,7 @@ $stmt = $pdo->prepare("
     JOIN contacts co ON co.id = c.contact_id
     LEFT JOIN departments d ON d.id = c.dept_id
     WHERE c.id > ? AND c.status = 'open'" . ($deptFilter ? str_replace('dept_id', 'c.dept_id', $deptFilter) : '') . "
+      AND (c.channel != 'widget' OR EXISTS (SELECT 1 FROM messages mv WHERE mv.conversation_id = c.id AND mv.sender_type = 'visitor'))
     ORDER BY c.id DESC
     LIMIT 10
 ");
@@ -60,7 +65,7 @@ $stmt->execute([$agent['id']]);
 $myOpenCount = (int)$stmt->fetchColumn();
 
 // Unassigned open conversations (scoped to visible depts)
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE assigned_agent_id IS NULL AND status = 'open'" . $deptFilter);
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE assigned_agent_id IS NULL AND status = 'open'" . $deptFilter . $widgetGate);
 $stmt->execute($deptParams);
 $unassignedCount = (int)$stmt->fetchColumn();
 

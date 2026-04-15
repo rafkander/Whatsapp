@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS `messages` (
   `sender_type` enum('visitor','agent','bot','system') NOT NULL,
   `sender_id` int(11) DEFAULT NULL,
   `content` text DEFAULT NULL,
-  `type` enum('text','file','image','audio','video','system','note') NOT NULL DEFAULT 'text',
+  `type` enum('text','file','image','audio','video','system','note','buttons') NOT NULL DEFAULT 'text',
   `file_url` varchar(500) DEFAULT NULL,
   `file_name` varchar(255) DEFAULT NULL,
   `file_size` int(11) DEFAULT NULL,

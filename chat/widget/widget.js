@@ -253,6 +253,12 @@
 
         console.log('[CW] init.php response:', res);
 
+        // Init failed — likely CORS-blocked on an unauthorised domain. Don't render anything.
+        if (!res || !res.success) {
+            console.warn('[CW] init failed, widget will not render');
+            return;
+        }
+
         if (res.uid) {
             state.uid = res.uid;
             localStorage.setItem('_cw_uid', res.uid);

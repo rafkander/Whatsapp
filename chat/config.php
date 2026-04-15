@@ -27,7 +27,7 @@ define('WA_API_VERSION', 'v18.0');
 
 // CORS: comma-separated allowed origins, or '*' for any
 // e.g. 'https://yourwebsite.com,https://www.yourwebsite.com'
-define('ALLOWED_ORIGINS', '*');
+define('ALLOWED_ORIGINS', 'https://rcuk.com,https://www.rcuk.com,https://alfonica.com,https://www.alfonica.com,http://localhost:8000');
 
 // Uploads directory (relative to chat/ root)
 define('UPLOAD_DIR', __DIR__ . '/uploads/');

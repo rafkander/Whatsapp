@@ -1404,6 +1404,20 @@
                 </div>
 
                 <div class="card settings-section">
+                    <div class="card-hd">🌐 Allowed Widget Domains</div>
+                    <div style="padding:20px">
+                        <div class="f-group" style="margin-bottom:10px">
+                            <label class="f-label">Origins where the widget can run</label>
+                            <textarea class="f-textarea" v-model="settings.widget_allowed_origins" rows="4" placeholder="https://rcuk.com&#10;https://www.rcuk.com&#10;https://alfonica.com&#10;https://www.alfonica.com" style="font-family:monospace;font-size:.82rem"></textarea>
+                        </div>
+                        <div style="font-size:.78rem;color:#6b7280;line-height:1.45">
+                            One origin per line. Must include the scheme (<code>https://</code>). The widget will only load on these domains; requests from any other origin are blocked at the API layer.
+                            Leave blank to fall back to the <code>ALLOWED_ORIGINS</code> value in <code>config.php</code>.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card settings-section">
                     <div class="card-hd">📱 WhatsApp Cloud API</div>
                     <div style="padding:20px">
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">

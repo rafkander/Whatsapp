@@ -39,7 +39,7 @@ $stmt = $pdo->prepare("
            CASE WHEN m.sender_type = 'agent' THEN a.avatar ELSE NULL END AS sender_avatar
     FROM messages m
     LEFT JOIN agents a ON a.id = m.sender_id AND m.sender_type = 'agent'
-    WHERE m.conversation_id = ? AND m.id > ? AND m.type != 'note'
+    WHERE m.conversation_id = ? AND m.id > ? AND m.type NOT IN ('note', 'system') AND m.sender_type != 'system'
     ORDER BY m.id ASC
     LIMIT 50
 ");
