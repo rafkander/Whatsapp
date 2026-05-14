@@ -1,0 +1,20 @@
+# ── Secrets & config ──────────────────────────────────────────
+chat/config.php
+.env
+*.env
+
+# ── Runtime logs ──────────────────────────────────────────────
+chat/*.log
+chat/api/webhook/*.log
+
+# ── Uploads (user content) ────────────────────────────────────
+chat/uploads/*
+!chat/uploads/.htaccess
+
+# ── Installer lock file ───────────────────────────────────────
+chat/install/.installed
+
+# ── OS / editor noise ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp

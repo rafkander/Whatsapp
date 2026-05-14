@@ -40,34 +40,41 @@ if (!$conv) {
     json_error('Conversation not found', 404);
 }
 
-// If conversation is closed, reopen it — unassign and reset bot so flow starts fresh
+// ── Conversation reopen + message insert (transactional) ─────
 $wasReopened = false;
-if ($conv['status'] === 'closed') {
-    $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, bot_state = NULL, bot_data = NULL, updated_at = NOW() WHERE id = ?")
+$msgId       = 0;
+
+$pdo->beginTransaction();
+try {
+    if ($conv['status'] === 'closed') {
+        $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, bot_state = NULL, bot_data = NULL, updated_at = NOW() WHERE id = ?")
+            ->execute([$convId]);
+        $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened by visitor', 'system')")
+            ->execute([$convId]);
+        $wasReopened = true;
+        $conv['assigned_agent_id'] = null;
+        $conv['bot_state']         = null;
+    }
+
+    $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type, file_url) VALUES (?, 'visitor', ?, ?, ?)")
+        ->execute([$convId, $content ?: null, $type, $fileUrl ?: null]);
+
+    $msgId = (int)$pdo->lastInsertId();
+
+    $pdo->prepare('UPDATE conversations SET updated_at = NOW(), unread_agent = unread_agent + 1 WHERE id = ?')
         ->execute([$convId]);
-    $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened by visitor', 'system')")
-        ->execute([$convId]);
-    $wasReopened = true;
-    // Refresh conv so the bot check below sees the updated state
-    $conv['assigned_agent_id'] = null;
-    $conv['bot_state'] = null;
+
+    $pdo->commit();
+} catch (\Throwable $e) {
+    $pdo->rollBack();
+    json_error('Failed to save message', 500);
 }
 
-// Insert message
-$pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type, file_url) VALUES (?, 'visitor', ?, ?, ?)")
-    ->execute([$convId, $content ?: null, $type, $fileUrl ?: null]);
-
-$msgId = (int)$pdo->lastInsertId();
-
-// Update conversation
-$pdo->prepare('UPDATE conversations SET updated_at = NOW(), unread_agent = unread_agent + 1 WHERE id = ?')
-    ->execute([$convId]);
-
-// Clear visitor typing
+// Clear visitor typing (non-critical, outside transaction)
 $pdo->prepare("DELETE FROM typing_status WHERE conversation_id = ? AND sender_type = 'visitor'")
     ->execute([$convId]);
 
-// Run widget bot if conversation is still in bot flow (not done, not assigned to agent)
+// Run widget bot (outside transaction — may call DB + bot logic)
 $botState = $conv['bot_state'];
 if ($botState !== 'done' && empty($conv['assigned_agent_id'])) {
     try {

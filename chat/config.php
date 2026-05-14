@@ -25,6 +25,11 @@ define('WA_ACCESS_TOKEN', '');
 define('WA_VERIFY_TOKEN', '');
 define('WA_API_VERSION', 'v18.0');
 
+// Meta App Secret — used to verify X-Hub-Signature-256 on inbound webhook POSTs.
+// Found in: Meta Developer Portal → Your App → Settings → Basic → App Secret.
+// Leave empty to skip verification (fill in before going to production).
+define('WA_APP_SECRET', '');
+
 // CORS: comma-separated allowed origins, or '*' for any
 // e.g. 'https://yourwebsite.com,https://www.yourwebsite.com'
 define('ALLOWED_ORIGINS', 'https://rcuk.com,https://www.rcuk.com,https://alfonica.com,https://www.alfonica.com,http://localhost:8000');

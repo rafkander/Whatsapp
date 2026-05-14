@@ -105,55 +105,62 @@ if (!$smsAccountId) {
     if ($acc) $smsAccountId = (int)$acc['id'];
 }
 
-// ── Find open conversation or create one ─────────────────────
-$convQuery = "SELECT * FROM conversations WHERE contact_id = ? AND channel = 'sms'";
-$convParams = [$contactId];
-if ($smsAccountId) {
-    $convQuery .= ' AND (sms_account_id = ? OR sms_account_id IS NULL)';
-    $convParams[] = $smsAccountId;
-}
-$convQuery .= ' ORDER BY updated_at DESC LIMIT 1';
-$stmt = $pdo->prepare($convQuery);
-$stmt->execute($convParams);
-$conv = $stmt->fetch();
+// ── Conversation + message (transactional) ───────────────────
+$convId = 0;
+$isNew  = false;
 
-$isNew = false;
-if (!$conv) {
-    $pdo->prepare("INSERT INTO conversations (contact_id, channel, sms_account_id, status, unread_agent) VALUES (?, 'sms', ?, 'open', 1)")
-        ->execute([$contactId, $smsAccountId]);
-    $convId = (int)$pdo->lastInsertId();
-    $isNew  = true;
-} elseif ($conv['status'] === 'closed') {
-    $convId = (int)$conv['id'];
-    $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, dept_id = NULL, sms_account_id = COALESCE(sms_account_id, ?), unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
-        ->execute([$smsAccountId, $convId]);
-    $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened by contact', 'system')")
-        ->execute([$convId]);
-    $isNew = true;
-} elseif ($conv['status'] === 'pending') {
-    // First reply to an agent-initiated outbound SMS — make it visible
-    $convId = (int)$conv['id'];
-    $pdo->prepare("UPDATE conversations SET status = 'open', sms_account_id = COALESCE(sms_account_id, ?), unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
-        ->execute([$smsAccountId, $convId]);
-    $isNew = true;
-} else {
-    $convId = (int)$conv['id'];
-    if ($smsAccountId && !$conv['sms_account_id']) {
-        $pdo->prepare('UPDATE conversations SET sms_account_id = ? WHERE id = ?')->execute([$smsAccountId, $convId]);
+$pdo->beginTransaction();
+try {
+    $convQuery  = "SELECT * FROM conversations WHERE contact_id = ? AND channel = 'sms'";
+    $convParams = [$contactId];
+    if ($smsAccountId) {
+        $convQuery  .= ' AND (sms_account_id = ? OR sms_account_id IS NULL)';
+        $convParams[] = $smsAccountId;
     }
-}
+    $convQuery .= ' ORDER BY updated_at DESC LIMIT 1';
+    $stmt = $pdo->prepare($convQuery);
+    $stmt->execute($convParams);
+    $conv = $stmt->fetch();
 
-// ── Insert message ────────────────────────────────────────────
-$created = $ts ? date('Y-m-d H:i:s', is_numeric($ts) ? (int)$ts : strtotime($ts)) : date('Y-m-d H:i:s');
-$pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type, wa_message_id, created_at) VALUES (?, 'visitor', ?, 'text', ?, ?)")
-    ->execute([$convId, $message, $msgId ? 'sms_' . $msgId : null, $created]);
+    if (!$conv) {
+        $pdo->prepare("INSERT INTO conversations (contact_id, channel, sms_account_id, status, unread_agent) VALUES (?, 'sms', ?, 'open', 1)")
+            ->execute([$contactId, $smsAccountId]);
+        $convId = (int)$pdo->lastInsertId();
+        $isNew  = true;
+    } elseif ($conv['status'] === 'closed') {
+        $convId = (int)$conv['id'];
+        $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, dept_id = NULL, sms_account_id = COALESCE(sms_account_id, ?), unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
+            ->execute([$smsAccountId, $convId]);
+        $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened by contact', 'system')")
+            ->execute([$convId]);
+        $isNew = true;
+    } elseif ($conv['status'] === 'pending') {
+        // First reply to an agent-initiated outbound SMS — make it visible
+        $convId = (int)$conv['id'];
+        $pdo->prepare("UPDATE conversations SET status = 'open', sms_account_id = COALESCE(sms_account_id, ?), unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
+            ->execute([$smsAccountId, $convId]);
+        $isNew = true;
+    } else {
+        $convId = (int)$conv['id'];
+        if ($smsAccountId && !$conv['sms_account_id']) {
+            $pdo->prepare('UPDATE conversations SET sms_account_id = ? WHERE id = ?')->execute([$smsAccountId, $convId]);
+        }
+    }
 
-if (!$isNew) {
+    // Insert message
+    $created = $ts ? date('Y-m-d H:i:s', is_numeric($ts) ? (int)$ts : strtotime($ts)) : date('Y-m-d H:i:s');
+    $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type, wa_message_id, created_at) VALUES (?, 'visitor', ?, 'text', ?, ?)")
+        ->execute([$convId, $message, $msgId ? 'sms_' . $msgId : null, $created]);
+
     $pdo->prepare('UPDATE conversations SET updated_at = NOW(), unread_agent = unread_agent + 1 WHERE id = ?')
         ->execute([$convId]);
-} else {
-    $pdo->prepare('UPDATE conversations SET updated_at = NOW() WHERE id = ?')
-        ->execute([$convId]);
+
+    $pdo->commit();
+} catch (\Throwable $e) {
+    $pdo->rollBack();
+    error_log('SMS incoming msg transaction failed for sender=' . $sender . ': ' . $e->getMessage());
+    echo json_encode(['status' => 'error']);
+    exit;
 }
 
 if ($isNew) {

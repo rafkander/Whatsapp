@@ -58,6 +58,14 @@ db()->prepare("UPDATE agents SET status = 'online', updated_at = NOW() WHERE id 
 $exp   = time() + JWT_TTL;
 $token = jwt_encode(['agent_id' => $agent['id'], 'role' => $agent['role'], 'exp' => $exp]);
 
+// Register session so it can be revoked on logout
+$tokenHash = hash('sha256', $token);
+db()->prepare('INSERT INTO agent_sessions (agent_id, token_hash, expires_at) VALUES (?, ?, FROM_UNIXTIME(?))')
+    ->execute([$agent['id'], $tokenHash, $exp]);
+// Prune expired sessions for this agent
+db()->prepare('DELETE FROM agent_sessions WHERE agent_id = ? AND expires_at < NOW()')
+    ->execute([$agent['id']]);
+
 json_success([
     'token' => $token,
     'expires_at' => $exp,

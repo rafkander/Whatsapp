@@ -22,7 +22,7 @@ require_once dirname(__DIR__, 2) . '/config.php';
 require_once dirname(__DIR__) . '/helpers.php';
 
 // ── Raw request log (debug) ───────────────────────────────────
-$_rawLog = __DIR__ . '/webhook_requests.log';
+$_rawLog  = __DIR__ . '/webhook_requests.log';
 $_logLine = '[' . date('Y-m-d H:i:s') . '] '
     . $_SERVER['REQUEST_METHOD'] . ' '
     . ($_SERVER['QUERY_STRING'] ? '?' . $_SERVER['QUERY_STRING'] : '')
@@ -35,7 +35,7 @@ header('Content-Type: application/json');
 
 $pdo = db();
 
-// ── GET: Webhook Verification ────────────────────────────────
+// ── GET: Webhook Verification ─────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $mode      = $_GET['hub_mode']         ?? '';
     $token     = $_GET['hub_verify_token'] ?? '';
@@ -88,7 +88,22 @@ if (!$anyAccountEnabled && get_setting('wa_enabled') !== '1') {
     exit;
 }
 
-$raw  = file_get_contents('php://input');
+// php://input is re-readable in PHP 7+ (already read once above for the log)
+$raw = file_get_contents('php://input');
+
+// ── Verify X-Hub-Signature-256 ────────────────────────────────
+// Meta signs every POST with HMAC-SHA256(app_secret, raw_body).
+// Set WA_APP_SECRET in config.php to enable verification.
+if (defined('WA_APP_SECRET') && WA_APP_SECRET !== '') {
+    $sigHeader = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
+    $expected  = 'sha256=' . hash_hmac('sha256', $raw, WA_APP_SECRET);
+    if (!$sigHeader || !hash_equals($expected, $sigHeader)) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Invalid signature']);
+        exit;
+    }
+}
+
 $data = json_decode($raw, true);
 
 if (!$data) {
@@ -136,7 +151,8 @@ exit;
 
 // ─────────────────────────────────────────────────────────────
 
-function handle_incoming_message(PDO $pdo, array $msg, array $waContacts, ?array $creds, ?int $waAccountId, string $botFlow): void {
+function handle_incoming_message(PDO $pdo, array $msg, array $waContacts, ?array $creds, ?int $waAccountId, string $botFlow): void
+{
     $waId = $msg['id']   ?? '';
     $from = $msg['from'] ?? '';
     $type = $msg['type'] ?? 'text';
@@ -149,7 +165,7 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts, ?array
     $stmt->execute([$waId]);
     if ($stmt->fetch()) return;
 
-    // Get or create contact
+    // Resolve contact name from the contacts metadata block
     $waContactName = '';
     foreach ($waContacts as $wc) {
         if (($wc['wa_id'] ?? '') === $from) {
@@ -158,110 +174,121 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts, ?array
         }
     }
 
-    $uid = 'wa_' . $from;
-
+    // find_or_create_contact is its own atomic operation — keep outside the transaction
     $contact   = find_or_create_contact($pdo, $from, $waContactName ?: null, 'whatsapp');
     $contactId = (int)$contact['id'];
 
-    // Find open or most recent conversation — filter by account if known
-    $convQuery = "SELECT * FROM conversations WHERE contact_id = ? AND channel = 'whatsapp'";
-    $convParams = [$contactId];
-    if ($waAccountId) {
-        $convQuery .= ' AND (wa_account_id = ? OR wa_account_id IS NULL)';
-        $convParams[] = $waAccountId;
-    }
-    $convQuery .= ' ORDER BY updated_at DESC LIMIT 1';
-
-    $stmt = $pdo->prepare($convQuery);
-    $stmt->execute($convParams);
-    $conv = $stmt->fetch();
-
-    if (!$conv) {
-        $pdo->prepare("INSERT INTO conversations (contact_id, channel, wa_account_id, status, unread_agent) VALUES (?, 'whatsapp', ?, 'open', 1)")
-            ->execute([$contactId, $waAccountId]);
-        $convId = (int)$pdo->lastInsertId();
-        $isNew  = true;
-    } elseif ($conv['status'] === 'closed') {
-        $convId = (int)$conv['id'];
-        $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, dept_id = NULL, bot_state = NULL, bot_data = NULL, wa_account_id = COALESCE(wa_account_id, ?), unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
-            ->execute([$waAccountId, $convId]);
-        $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened by contact', 'system')")
-            ->execute([$convId]);
-        $isNew = true;
-    } else {
-        $convId = (int)$conv['id'];
-        // Update account_id if it wasn't set yet
-        if ($waAccountId && !$conv['wa_account_id']) {
-            $pdo->prepare('UPDATE conversations SET wa_account_id = ? WHERE id = ?')->execute([$waAccountId, $convId]);
-        }
-        $isNew = false;
-    }
-
-    // Process message content
+    // ── Conversation + message (transactional) ────────────────
+    $convId        = 0;
+    $isNew         = false;
+    $conv          = null;
     $content       = '';
     $msgType       = 'text';
     $fileUrl       = null;
     $fileName      = null;
     $interactiveId = null;
 
-    switch ($type) {
-        case 'text':
-            $content = $msg['text']['body'] ?? '';
-            break;
+    $pdo->beginTransaction();
+    try {
+        // Find open or most recent conversation — filter by account if known
+        $convQuery  = "SELECT * FROM conversations WHERE contact_id = ? AND channel = 'whatsapp'";
+        $convParams = [$contactId];
+        if ($waAccountId) {
+            $convQuery  .= ' AND (wa_account_id = ? OR wa_account_id IS NULL)';
+            $convParams[] = $waAccountId;
+        }
+        $convQuery .= ' ORDER BY updated_at DESC LIMIT 1';
 
-        case 'interactive':
-            $iType = $msg['interactive']['type'] ?? '';
-            if ($iType === 'button_reply') {
-                $interactiveId = $msg['interactive']['button_reply']['id']    ?? null;
-                $content       = $msg['interactive']['button_reply']['title'] ?? '';
-            } elseif ($iType === 'list_reply') {
-                $interactiveId = $msg['interactive']['list_reply']['id']    ?? null;
-                $content       = $msg['interactive']['list_reply']['title'] ?? '';
+        $stmt = $pdo->prepare($convQuery);
+        $stmt->execute($convParams);
+        $conv = $stmt->fetch();
+
+        if (!$conv) {
+            $pdo->prepare("INSERT INTO conversations (contact_id, channel, wa_account_id, status, unread_agent) VALUES (?, 'whatsapp', ?, 'open', 1)")
+                ->execute([$contactId, $waAccountId]);
+            $convId = (int)$pdo->lastInsertId();
+            $isNew  = true;
+        } elseif ($conv['status'] === 'closed') {
+            $convId = (int)$conv['id'];
+            $pdo->prepare("UPDATE conversations SET status = 'open', assigned_agent_id = NULL, dept_id = NULL, bot_state = NULL, bot_data = NULL, wa_account_id = COALESCE(wa_account_id, ?), unread_agent = unread_agent + 1, updated_at = NOW() WHERE id = ?")
+                ->execute([$waAccountId, $convId]);
+            $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type) VALUES (?, 'system', 'Conversation reopened by contact', 'system')")
+                ->execute([$convId]);
+            $isNew = true;
+        } else {
+            $convId = (int)$conv['id'];
+            if ($waAccountId && !$conv['wa_account_id']) {
+                $pdo->prepare('UPDATE conversations SET wa_account_id = ? WHERE id = ?')->execute([$waAccountId, $convId]);
             }
-            break;
+            $isNew = false;
+        }
 
-        case 'image':
-        case 'document':
-        case 'audio':
-        case 'video':
-            $mediaId  = $msg[$type]['id'] ?? null;
-            $caption  = $msg[$type]['caption'] ?? null;
-            $filename = $msg[$type]['filename'] ?? ($type . '_' . $waId);
-            $msgType  = in_array($type, ['image']) ? 'image' : 'file';
-            $content  = $caption ?: $filename;
-            $fileName = $filename;
-            if ($mediaId) {
-                $fileUrl = wa_download_media($mediaId, $creds);
-            }
-            break;
+        // Parse message content
+        switch ($type) {
+            case 'text':
+                $content = $msg['text']['body'] ?? '';
+                break;
 
-        case 'location':
-            $lat     = $msg['location']['latitude']  ?? '';
-            $lng     = $msg['location']['longitude'] ?? '';
-            $content = "Location: {$lat}, {$lng}";
-            break;
+            case 'interactive':
+                $iType = $msg['interactive']['type'] ?? '';
+                if ($iType === 'button_reply') {
+                    $interactiveId = $msg['interactive']['button_reply']['id']    ?? null;
+                    $content       = $msg['interactive']['button_reply']['title'] ?? '';
+                } elseif ($iType === 'list_reply') {
+                    $interactiveId = $msg['interactive']['list_reply']['id']    ?? null;
+                    $content       = $msg['interactive']['list_reply']['title'] ?? '';
+                }
+                break;
 
-        case 'sticker':
-            $content = '[Sticker]';
-            break;
+            case 'image':
+            case 'document':
+            case 'audio':
+            case 'video':
+                $mediaId  = $msg[$type]['id'] ?? null;
+                $caption  = $msg[$type]['caption'] ?? null;
+                $filename = $msg[$type]['filename'] ?? ($type . '_' . $waId);
+                $msgType  = in_array($type, ['image']) ? 'image' : 'file';
+                $content  = $caption ?: $filename;
+                $fileName = $filename;
+                if ($mediaId) {
+                    $fileUrl = wa_download_media($mediaId, $creds);
+                }
+                break;
 
-        default:
-            $content = "[{$type} message]";
+            case 'location':
+                $lat     = $msg['location']['latitude']  ?? '';
+                $lng     = $msg['location']['longitude'] ?? '';
+                $content = "Location: {$lat}, {$lng}";
+                break;
+
+            case 'sticker':
+                $content = '[Sticker]';
+                break;
+
+            default:
+                $content = "[{$type} message]";
+        }
+
+        // Insert message
+        $created = date('Y-m-d H:i:s', (int)$ts);
+        $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type, file_url, file_name, wa_message_id, created_at) VALUES (?, 'visitor', ?, ?, ?, ?, ?, ?)")
+            ->execute([$convId, $content, $msgType, $fileUrl, $fileName, $waId, $created]);
+
+        $pdo->prepare('UPDATE conversations SET updated_at = NOW(), unread_agent = unread_agent + 1 WHERE id = ?')
+            ->execute([$convId]);
+
+        $pdo->commit();
+    } catch (\Throwable $e) {
+        $pdo->rollBack();
+        error_log('WA incoming msg transaction failed for from=' . $from . ': ' . $e->getMessage());
+        return;
     }
 
-    // Insert message
-    $created = date('Y-m-d H:i:s', (int)$ts);
-    $pdo->prepare("INSERT INTO messages (conversation_id, sender_type, content, type, file_url, file_name, wa_message_id, created_at) VALUES (?, 'visitor', ?, ?, ?, ?, ?, ?)")
-        ->execute([$convId, $content, $msgType, $fileUrl, $fileName, $waId, $created]);
-
-    $pdo->prepare('UPDATE conversations SET updated_at = NOW(), unread_agent = unread_agent + 1 WHERE id = ?')
-        ->execute([$convId]);
-
+    // ── Post-commit: notifications and bot (outside transaction) ─
     if ($isNew) {
         notify_new_conversation(['id' => $convId, 'channel' => 'whatsapp', 'page_url' => ''], $contact);
     }
 
-    // ── Bot ──────────────────────────────────────────────────
     $botState        = $isNew ? 'start' : ($conv['bot_state'] ?? null);
     $alreadyAssigned = !$isNew && !empty($conv['assigned_agent_id']);
 
@@ -275,7 +302,8 @@ function handle_incoming_message(PDO $pdo, array $msg, array $waContacts, ?array
     }
 }
 
-function handle_status_update(PDO $pdo, array $status): void {
+function handle_status_update(PDO $pdo, array $status): void
+{
     $waId    = $status['id']     ?? '';
     $statusV = $status['status'] ?? '';
 

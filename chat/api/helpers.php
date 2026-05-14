@@ -134,6 +134,14 @@ function require_agent(): array {
         json_error('Invalid or expired token', 401);
     }
 
+    // Verify the session has not been revoked via logout
+    $tokenHash = hash('sha256', $token);
+    $sessStmt  = db()->prepare('SELECT id FROM agent_sessions WHERE token_hash = ? AND expires_at > NOW() LIMIT 1');
+    $sessStmt->execute([$tokenHash]);
+    if (!$sessStmt->fetch()) {
+        json_error('Session expired or revoked', 401);
+    }
+
     $stmt = db()->prepare('SELECT id, name, email, role, status, avatar FROM agents WHERE id = ?');
     $stmt->execute([$data['agent_id']]);
     $agent = $stmt->fetch();
