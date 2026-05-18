@@ -3,6 +3,16 @@
  * POST /api/agent/login.php
  * Authenticate agent → return JWT
  */
+set_exception_handler(function($e) {
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => $e->getMessage(), 'file' => basename($e->getFile()), 'line' => $e->getLine()]);
+    exit;
+});
+set_error_handler(function($errno, $errstr, $errfile) {
+    throw new \ErrorException($errstr, $errno, $errno, $errfile);
+});
+
 require_once dirname(__DIR__, 2) . '/config.php';
 require_once dirname(__DIR__) . '/cors.php';
 require_once dirname(__DIR__) . '/helpers.php';
