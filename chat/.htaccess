@@ -20,6 +20,9 @@ Options -Indexes
     RewriteEngine On
     RewriteBase /
 
+    # Pass Authorization header through to PHP (Apache strips it by default)
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
     # Allow direct access to existing files and dirs
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
