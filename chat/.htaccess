@@ -15,6 +15,11 @@ Options -Indexes
     Deny from all
 </FilesMatch>
 
+# ── Pass Authorization header to PHP (Apache CGI strips it) ──
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
+</IfModule>
+
 # ── Rewrite rules ─────────────────────────────────────────────
 <IfModule mod_rewrite.c>
     RewriteEngine On

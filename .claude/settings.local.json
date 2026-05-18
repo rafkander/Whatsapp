@@ -32,7 +32,9 @@
       "Bash(git config *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Bash('/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe' -u chat_user -ppassword123 chat_db -e 'UPDATE agents SET password_hash='\\\\''__TRACKED_VAR__'\\\\'' WHERE email='\\\\''rafael.kander@rcuk.com'\\\\'';')"
     ]
   }
 }
