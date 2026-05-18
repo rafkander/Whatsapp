@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $step === 2) {
 
             // Create admin account
             $hash = password_hash($adminPass, PASSWORD_BCRYPT);
-            $stmt = $pdo->prepare("INSERT INTO agents (name, email, password_hash, role, status) VALUES (?, ?, ?, 'admin', 'online') ON DUPLICATE KEY UPDATE role='admin'");
+            $stmt = $pdo->prepare("INSERT INTO agents (name, email, password_hash, role, status) VALUES (?, ?, ?, 'admin', 'online') ON DUPLICATE KEY UPDATE name=VALUES(name), password_hash=VALUES(password_hash), role='admin'");
             $stmt->execute([$adminName, $adminEmail, $hash]);
 
             // Write config.php
