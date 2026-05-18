@@ -27,7 +27,12 @@
       "Bash(curl -sv http://localhost:8080/)",
       "PowerShell($chatDir = \"C:\\\\Users\\\\RCUK-L038\\\\OneDrive - Rose Communications \\(UK\\) Ltd\\\\Desktop\\\\Whatsapp-main \\(1\\)\\\\Whatsapp-main\\\\chat\"; $routerScript = \"$chatDir\\\\router.php\"; Start-Process -FilePath \"php\" -ArgumentList \"-S\", \"localhost:8080\", \"-t\", $chatDir, $routerScript -NoNewWindow -RedirectStandardOutput \"$env:TEMP\\\\php-server.log\" -RedirectStandardError \"$env:TEMP\\\\php-server-err.log\"; Start-Sleep 2; Invoke-WebRequest -Uri \"http://localhost:8080/\" -MaximumRedirection 0 -ErrorAction SilentlyContinue | Select-Object StatusCode, Headers)",
       "Bash(curl -sv http://localhost:8080/dashboard/)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(gh --version)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }
