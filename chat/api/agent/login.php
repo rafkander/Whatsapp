@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $file    = sys_get_temp_dir() . '/login_rl_' . md5($ip) . '.json';
     $now     = time();
     $window  = 900;   // 15 minutes
-    $maxAttempts = 10;
+    $maxAttempts = 50;
 
     $attempts = [];
     if (file_exists($file)) {
