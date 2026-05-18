@@ -49,12 +49,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $step === 2) {
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
 
-            // Run schema (DDL only — stop before seed data)
+            // Run schema — strip comment lines first to avoid semicolons inside comments breaking the split
             $sql = file_get_contents($schemaFile);
+            $sql = preg_replace('/^--[^\n]*$/m', '', $sql);
             $statements = array_filter(array_map('trim', explode(';', $sql)));
             foreach ($statements as $stmt) {
-                if ($stmt) {
+                if (!$stmt) continue;
+                try {
                     $pdo->exec($stmt);
+                } catch (PDOException $e) {
+                    // 1060 = duplicate column, 1061 = duplicate key, 1068 = multiple PK — safe to skip
+                    if (!in_array($e->errorInfo[1], [1060, 1061, 1068])) {
+                        throw $e;
+                    }
                 }
             }
 
@@ -469,7 +476,7 @@ a:hover { text-decoration: underline; }
         'JSON extension'      => extension_loaded('json'),
         'mbstring extension'  => extension_loaded('mbstring'),
         'Root directory writable (config.php)' => is_writable(dirname(__DIR__)) || file_exists($configFile),
-        'uploads/ directory writable' => is_writable(dirname(__DIR__) . '/uploads'),
+        'uploads/ directory writable' => (function() { $f = dirname(__DIR__) . '/uploads/.wtest'; $ok = @file_put_contents($f, '1') !== false; @unlink($f); return $ok; })(),
     ];
     $allOk = !in_array(false, $checks, true);
     ?>

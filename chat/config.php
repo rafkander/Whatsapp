@@ -14,7 +14,7 @@ define('DB_PASS', 'password123');
 define('APP_URL', 'http://localhost:8080');
 
 // Secret key for JWT signing — keep private!
-define('JWT_SECRET', '856a9cfed5c884d63e777a9a7af1db689ba28aa066ef239f5a44cc03c127aaf7');
+define('JWT_SECRET', '23fab75749842087abdfddf23331b42882559da9b77103d71916cde00c1ac72d');
 
 // JWT token lifetime in seconds (default 8 hours)
 define('JWT_TTL', 28800);
@@ -25,29 +25,11 @@ define('WA_ACCESS_TOKEN', '');
 define('WA_VERIFY_TOKEN', '');
 define('WA_API_VERSION', 'v18.0');
 
-// Meta App Secret — used to verify X-Hub-Signature-256 on inbound webhook POSTs.
-// Found in: Meta Developer Portal → Your App → Settings → Basic → App Secret.
-// Leave empty to skip verification (fill in before going to production).
-define('WA_APP_SECRET', '');
-
 // CORS: comma-separated allowed origins, or '*' for any
 // e.g. 'https://yourwebsite.com,https://www.yourwebsite.com'
-define('ALLOWED_ORIGINS', 'https://rcuk.com,https://www.rcuk.com,https://alfonica.com,https://www.alfonica.com,http://localhost:8000');
+define('ALLOWED_ORIGINS', '*');
 
 // Uploads directory (relative to chat/ root)
 define('UPLOAD_DIR', __DIR__ . '/uploads/');
 define('UPLOAD_URL', APP_URL . '/uploads/');
 define('MAX_UPLOAD_MB', 10);
-
-// aBillity API (CDR / Billing data)
-// System: ROS03TES  |  Docs: GET api/cdr/Summary, GET api/revenueassurance/GetCallAnalysis, etc.
-define('ABILLITY_API_BASE', 'https://web.abillity.co.uk/ROS03TES');
-define('ABILLITY_USERNAME', 'operations@rcuk.com');
-define('ABILLITY_PASSWORD', 'MyAccount2.0*');
-// Auth: POST api/Authenticate with {Username, Password} → returns token for subsequent requests
-
-// Giacom Mobile API — https://comms-api.cloud.market/
-// Credentials are managed via Settings → Giacom API in the admin UI.
-// These constants are fallbacks only; DB settings take priority.
-define('GIACOM_USERNAME', 'maxi.rose@rcuk.com');
-define('GIACOM_PASSWORD', 'RcukAPI-2.0');

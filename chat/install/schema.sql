@@ -194,7 +194,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- SMS Integration (Alfonica SMS API)
 -- ============================================================
 
--- One shared Alfonica API token; sms_accounts are just sender IDs under that account
+-- One shared Alfonica API token — sms_accounts are just sender IDs under that account
 CREATE TABLE IF NOT EXISTS `sms_accounts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,

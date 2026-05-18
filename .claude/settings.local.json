@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clean *)",
+      "PowerShell(Get-ChildItem *)",
+      "Bash(git remote *)",
+      "Bash(git fetch *)",
+      "Bash(git ls-remote *)",
+      "Bash(git checkout *)",
+      "Bash(php --version)",
+      "Bash(mysql --version)",
+      "Bash(docker --version)",
+      "Bash(where xampp *)",
+      "Bash(where php *)",
+      "Bash(/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe *)",
+      "Bash(php -S localhost:8080 router.php)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/dashboard/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/agent/login.php)",
+      "Bash(curl -s -X POST http://localhost:8080/api/agent/login.php -H \"Content-Type: application/json\" -d '{\"email\":\"rafael.kander@rcuk.com\",\"password\":\"test\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/install/index.php)",
+      "Bash(php --ini)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(Stop-Process *)",
+      "Bash(php -r \"echo extension_loaded\\('mbstring'\\) ? 'mbstring: ON' : 'mbstring: OFF';\")",
+      "Bash(php *)",
+      "Bash(curl -sv http://localhost:8080/)",
+      "PowerShell($chatDir = \"C:\\\\Users\\\\RCUK-L038\\\\OneDrive - Rose Communications \\(UK\\) Ltd\\\\Desktop\\\\Whatsapp-main \\(1\\)\\\\Whatsapp-main\\\\chat\"; $routerScript = \"$chatDir\\\\router.php\"; Start-Process -FilePath \"php\" -ArgumentList \"-S\", \"localhost:8080\", \"-t\", $chatDir, $routerScript -NoNewWindow -RedirectStandardOutput \"$env:TEMP\\\\php-server.log\" -RedirectStandardError \"$env:TEMP\\\\php-server-err.log\"; Start-Sleep 2; Invoke-WebRequest -Uri \"http://localhost:8080/\" -MaximumRedirection 0 -ErrorAction SilentlyContinue | Select-Object StatusCode, Headers)",
+      "Bash(curl -sv http://localhost:8080/dashboard/)",
+      "Bash(curl *)"
+    ]
+  }
+}
